@@ -19,7 +19,6 @@ task('deploy:pool-factory', 'Deploy a relay pool factory').setAction(
       RelayPoolFactory: {
         hyperlaneMailbox,
         weth,
-        verify: true,
       },
     }
 

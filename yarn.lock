@@ -1827,7 +1827,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@relay-protocol/client@workspace:packages/client":
+"@relay-protocol/client@workspace:*, @relay-protocol/client@workspace:packages/client":
   version: 0.0.0-use.local
   resolution: "@relay-protocol/client@workspace:packages/client"
   dependencies:
@@ -1922,6 +1922,7 @@ __metadata:
     "@nomicfoundation/hardhat-toolbox": "npm:5.0.0"
     "@nomicfoundation/hardhat-verify": "npm:2.0.12"
     "@openzeppelin/contracts": "npm:5.2.0"
+    "@relay-protocol/client": "workspace:*"
     "@relay-protocol/helpers": "workspace:*"
     "@typechain/ethers-v6": "npm:0.5.1"
     "@typechain/hardhat": "npm:9.1.0"

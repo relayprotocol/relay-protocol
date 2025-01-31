@@ -12,7 +12,7 @@ export default async function ({
   const { pool, asset, creator, thirdPartyPool, origins } = event.args
 
   // First create or update the yield pool entry
-  const [totalAssets, totalShares, name] = await Promise.all([
+  const [totalAssets, totalShares, name, symbol] = await Promise.all([
     context.client.readContract({
       abi: erc4626Abi,
       address: thirdPartyPool,
@@ -27,6 +27,11 @@ export default async function ({
       abi: erc20Abi,
       address: thirdPartyPool,
       functionName: 'name',
+    }),
+    context.client.readContract({
+      abi: erc20Abi,
+      address: thirdPartyPool,
+      functionName: 'symbol',
     }),
   ])
 
@@ -51,7 +56,7 @@ export default async function ({
   await context.db.insert(relayPool).values({
     contractAddress: pool as `0x${string}`,
     asset: asset as `0x${string}`,
-    creator: creator as `0x${string}`,
+    curator: creator as `0x${string}`,
     yieldPool: thirdPartyPool as `0x${string}`,
     outstandingDebt: BigInt(0),
     totalAssets: BigInt(0),
@@ -59,6 +64,8 @@ export default async function ({
     chainId: context.network.chainId,
     createdAt: BigInt(new Date().getTime()),
     createdAtBlock: event.block.number,
+    name,
+    symbol,
   })
 
   // Create origins as well

@@ -14,18 +14,23 @@ export const getAddresses = () => {
     if ((match = file.match(/BridgeProxy-(?<bridge>.*)-(?<chainId>.*)/))) {
       addresses[match.groups!.chainId] ||= {}
       addresses[match.groups!.chainId].BridgeProxy ||= {}
-      addresses[match.groups!.chainId].BridgeProxy[match.groups!.bridge] =
-        getAddressForFile(file + '/deployed_addresses.json')
+      const address = getAddressForFile(file + '/deployed_addresses.json')
+      if (address) {
+        addresses[match.groups!.chainId].BridgeProxy[match.groups!.bridge] =
+          address
+      }
     } else if ((match = file.match(/RelayBridgeFactory-(?<chainId>.*)/))) {
       addresses[match.groups!.chainId] ||= {}
-      addresses[match.groups!.chainId].RelayBridgeFactory = getAddressForFile(
-        file + '/deployed_addresses.json'
-      )
+      const address = getAddressForFile(file + '/deployed_addresses.json')
+      if (address) {
+        addresses[match.groups!.chainId].RelayBridgeFactory = address
+      }
     } else if ((match = file.match(/RelayPoolFactory-(?<chainId>.*)/))) {
       addresses[match.groups!.chainId] ||= {}
-      addresses[match.groups!.chainId].RelayPoolFactory = getAddressForFile(
-        file + '/deployed_addresses.json'
-      )
+      const address = getAddressForFile(file + '/deployed_addresses.json')
+      if (address) {
+        addresses[match.groups!.chainId].RelayPoolFactory = address
+      }
     }
   })
   return addresses

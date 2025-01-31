@@ -21,7 +21,7 @@ export const yieldPool = onchainTable('yield_pool', (t) => ({
 /**
  * Track relay pools
  * - contractAddress: Contract address
- * - creator: Address of the creator
+ * - curator: Address of the curator
  * - asset: Asset (token) address
  * - yieldPool: Yield pool address
  * - outstandingDebt: Current outstanding debt
@@ -35,7 +35,7 @@ export const relayPool = onchainTable(
   'relay_pool',
   (t) => ({
     contractAddress: t.hex().primaryKey(),
-    creator: t.hex().notNull(),
+    curator: t.hex().notNull(),
     asset: t.hex().notNull(),
     yieldPool: t.hex().notNull(),
     outstandingDebt: t.bigint().notNull(),
@@ -44,6 +44,8 @@ export const relayPool = onchainTable(
     chainId: t.integer().notNull(),
     createdAt: t.bigint().notNull(),
     createdAtBlock: t.bigint().notNull(),
+    name: t.text().notNull(),
+    symbol: t.text().notNull(),
   }),
   (table) => ({
     yieldPoolIdx: index().on(table.yieldPool),
@@ -59,6 +61,7 @@ export const poolOrigin = onchainTable(
     originChainId: t.integer().notNull(),
     originBridge: t.hex().notNull(),
     maxDebt: t.bigint().notNull(),
+    bridgeFee: t.bigint().notNull(),
   }),
   (table) => ({
     pk: primaryKey({
