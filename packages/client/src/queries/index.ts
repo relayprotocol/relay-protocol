@@ -162,7 +162,7 @@ export const GET_ALL_BRIDGE_TRANSACTIONS_BY_TYPE = gql`
         amount
         hyperlaneMessageId
         nativeBridgeStatus
-        nativeBridgeProofTxHash
+        opProofTxHash
         nativeBridgeFinalizedTxHash
         loanEmittedTxHash
         originTimestamp

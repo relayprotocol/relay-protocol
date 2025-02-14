@@ -1,5 +1,5 @@
 import { createConfig, factory } from 'ponder'
-import { Portal2 } from '@relay-protocol/helpers/abis'
+import { Portal2, Outbox } from '@relay-protocol/helpers/abis'
 
 import {
   RelayPool,
@@ -118,6 +118,14 @@ export default createConfig({
             networks['11155111']!.bridges!.base!.portalProxy! as `0x${string}`,
           ],
           startBlock: earliestBlocks.sepolia,
+        },
+      },
+    },
+    OrbitOutbox: {
+      abi: Outbox,
+      network: {
+        sepolia: {
+          address: networks['11155111']!.bridges!.arb!.outbox! as `0x${string}`,
         },
       },
     },

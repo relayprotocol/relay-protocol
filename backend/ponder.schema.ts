@@ -204,7 +204,6 @@ export const relayBridge = onchainTable(
  *
  * Bridge status:
  * - nativeBridgeStatus: INITIATED, PROVEN, FINALIZED
- * - nativeBridgeProofTxHash: Transaction hash of proof submission
  * - nativeBridgeFinalizedTxHash: Transaction hash of finalization
  *
  * Loan tracking:
@@ -216,6 +215,10 @@ export const relayBridge = onchainTable(
  *
  * OP Specifics:
  * - opWithdrawalHash: Withdrawal hash
+ * - opProofTxHash: Transaction hash of proof submission
+ *
+ * ARB Specifics:
+ * - arbTransactionIndex
  */
 export const bridgeTransaction = onchainTable(
   'bridge_transaction',
@@ -231,12 +234,13 @@ export const bridgeTransaction = onchainTable(
     amount: t.bigint().notNull(),
     hyperlaneMessageId: t.hex().notNull(),
     nativeBridgeStatus: t.text().notNull(),
-    nativeBridgeProofTxHash: t.hex(),
+    opProofTxHash: t.hex(),
     nativeBridgeFinalizedTxHash: t.hex(),
     loanEmittedTxHash: t.hex(),
     originTimestamp: t.bigint().notNull(),
     originTxHash: t.hex().notNull(),
     opWithdrawalHash: t.hex(),
+    arbTransactionIndex: t.bigint(),
   }),
   (table) => ({
     pk: primaryKey({
@@ -250,6 +254,7 @@ export const bridgeTransaction = onchainTable(
     assetIdx: index().on(table.asset),
     originTxHashIdx: index().on(table.originTxHash),
     opWithdrawalHashIdx: index().on(table.opWithdrawalHash),
+    arbTransactionIndex: index().on(table.arbTransactionIndex),
   })
 )
 

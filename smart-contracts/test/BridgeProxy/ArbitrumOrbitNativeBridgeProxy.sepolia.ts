@@ -12,7 +12,7 @@ const ETH_CHAIN_ID = 11155111n
 const ARB_CHAIN_ID = 42161n
 const {
   bridges: {
-    arb: { routerGateway, outbox },
+    arb: { routerGateway, outbox, arbSys },
   },
   assets: { weth: WETH },
 } = networks[ETH_CHAIN_ID.toString()]
@@ -120,9 +120,7 @@ describe('ArbitrumOrbitNativeBridgeProxy', function () {
 
   it('constructor values are correct', async () => {
     expect(await bridge.ROUTER()).to.be.equal(routerGateway)
-    expect(await bridge.ARB_SYS()).to.be.equal(
-      '0x0000000000000000000000000000000000000064'
-    )
+    expect(await bridge.ARB_SYS()).to.be.equal(arbSys)
   })
 
   describe('claim using BridgeProxy directly', () => {

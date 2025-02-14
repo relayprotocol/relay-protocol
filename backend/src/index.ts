@@ -26,6 +26,7 @@ import OriginAdded from './handlers/RelayPool/OriginAdded'
 import LoanEmitted from './handlers/RelayPool/LoanEmitted'
 import OutstandingDebtChanged from './handlers/RelayPool/OutstandingDebtChanged'
 import WithdrawalProven from './handlers/OPPortal/WithdrawalProven'
+import OutBoxTransactionExecuted from './handlers/OrbitOutbox/OutBoxTransactionExecuted'
 
 // ============= RelayPool Events =============
 
@@ -98,3 +99,8 @@ ponder.on('RelayPool:OutstandingDebtChanged', OutstandingDebtChanged)
  * Handles proven withdrawals from the OP portal
  */
 ponder.on('OPPortal:WithdrawalProven', WithdrawalProven)
+
+/**
+ * Handles completed withdrawals from the Orbit Outbox
+ */
+ponder.on('OrbitOutbox:OutBoxTransactionExecuted', OutBoxTransactionExecuted)

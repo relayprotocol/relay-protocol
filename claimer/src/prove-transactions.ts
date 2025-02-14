@@ -29,7 +29,7 @@ const GET_ALL_TRANSACTIONS_TO_PROVE = gql`
         amount
         hyperlaneMessageId
         nativeBridgeStatus
-        nativeBridgeProofTxHash
+        opProofTxHash
         nativeBridgeFinalizedTxHash
         loanEmittedTxHash
         originTimestamp

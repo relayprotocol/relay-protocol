@@ -1,4 +1,4 @@
-import { eq } from 'ponder'
+import { eq, and } from 'ponder'
 import { Context, Event } from 'ponder:registry'
 import { bridgeTransaction } from 'ponder:schema'
 
@@ -13,8 +13,12 @@ export default async function ({
     .update(bridgeTransaction)
     .set({
       nativeBridgeStatus: 'PROVEN',
-      nativeBridgeProofTxHash: event.transaction.hash,
+      opProofTxHash: event.transaction.hash,
     })
-    .where(eq(bridgeTransaction.opWithdrawalHash, event.args.withdrawalHash))
-    .and(eq(bridgeTransaction.nativeBridgeStatus, 'INITIATED'))
+    .where(
+      and(
+        eq(bridgeTransaction.opWithdrawalHash, event.args.withdrawalHash),
+        eq(bridgeTransaction.nativeBridgeStatus, 'INITIATED')
+      )
+    )
 }

@@ -4,6 +4,7 @@ export const arbitrumOne: L2NetworkConfig = {
   stack: 'arb',
   bridges: {
     arb: {
+      arbSys: '0x0000000000000000000000000000000000000064',
       routerGateway: '0x5288c571Fd7aD117beA99bF60FE0846C4E84F933',
     },
     cctp: {

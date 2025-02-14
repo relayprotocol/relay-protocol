@@ -4,6 +4,7 @@ export const arbSepolia: L2NetworkConfig = {
   stack: 'arb',
   bridges: {
     arb: {
+      arbSys: '0x0000000000000000000000000000000000000064',
       routerGateway: '0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7',
     },
     cctp: {

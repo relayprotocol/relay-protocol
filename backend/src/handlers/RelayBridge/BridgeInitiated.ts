@@ -19,11 +19,13 @@ export default async function ({
   // Parse logs to find the DispatchId event and extract hyperlaneMessageId
   let hyperlaneMessageId
   let opWithdrawalHash
+  let arbTransactionIndex
   const receipt = await context.client.getTransactionReceipt({
     hash: event.transaction.hash,
   })
   for (const log of receipt.logs) {
     if (
+      // Hyperlane event
       log.address.toLowerCase() === networkConfig.hyperlaneMailbox.toLowerCase()
     ) {
       const event = decodeEventLog({
@@ -36,6 +38,7 @@ export default async function ({
         hyperlaneMessageId = event.args.messageId
       }
     } else if (
+      // OP event
       networkConfig.bridges.op?.messagePasser &&
       log.address.toLowerCase() ===
         networkConfig.bridges.op?.messagePasser.toLowerCase()
@@ -48,6 +51,21 @@ export default async function ({
 
       if (event.eventName === 'MessagePassed') {
         opWithdrawalHash = event.args.withdrawalHash
+      }
+    } else if (
+      // ARB event
+      networkConfig.bridges.arb?.arbSys &&
+      log.address.toLowerCase() ===
+        networkConfig.bridges.arb?.arbSys.toLowerCase()
+    ) {
+      const event = decodeEventLog({
+        abi: ABIs.IArbSys,
+        data: log.data,
+        topics: log.topics,
+      })
+
+      if (event.eventName === 'L2ToL1Tx') {
+        arbTransactionIndex = event.args.position
       }
     }
   }
@@ -76,7 +94,6 @@ export default async function ({
 
     // Bridge status
     nativeBridgeStatus: 'INITIATED',
-    nativeBridgeProofTxHash: null as any,
     nativeBridgeFinalizedTxHash: null as any,
 
     // Instant loan tracking
@@ -88,5 +105,9 @@ export default async function ({
 
     // OP Specifics
     opWithdrawalHash,
+    opProofTxHash: null as any,
+
+    // ARB Specifics
+    arbTransactionIndex,
   })
 }

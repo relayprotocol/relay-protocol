@@ -20,6 +20,7 @@ export interface NetworkConfig {
       transmitter: string
     }
     arb?: {
+      arbSys?: string
       routerGateway: string
       outbox?: string
       rollup?: string
