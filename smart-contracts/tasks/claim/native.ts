@@ -41,21 +41,21 @@ task('claim:native:prove', 'Prooves ETH was deposited on native bridge')
     const { chainId } = await ethers.provider.getNetwork()
     const [signer] = await ethers.getSigners()
 
-    const finalizeParams = await buildProveWithdrawal(
+    const proveParams = await buildProveWithdrawal(
       origin,
       txHash,
       Number(chainId)
     )
     const portal = new ethers.Contract(
-      finalizeParams.portalAddress,
+      proveParams.portalAddress,
       Portal2,
       signer
     )
     const tx = await portal.proveWithdrawalTransaction(
-      finalizeParams.transaction,
-      finalizeParams.disputeGameIndex,
-      finalizeParams.outputRootProof,
-      finalizeParams.withdrawalProof
+      proveParams.transaction,
+      proveParams.disputeGameIndex,
+      proveParams.outputRootProof,
+      proveParams.withdrawalProof
     )
     console.log(tx.hash)
     console.log('Ready to be claimed in 7 days!')

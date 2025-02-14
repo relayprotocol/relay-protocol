@@ -175,6 +175,7 @@ export const buildProveWithdrawal = async (
       target,
       value,
     },
+    withdrawalHash,
     withdrawalProof,
   }
 }
@@ -198,7 +199,7 @@ export const buildFinalizeWithdrawal = async (
     'MessagePassed',
     new ethers.Interface(L2ToL1MessagePasserAbi)
   )
-  if (!event) {
+  if (!event || !event.args) {
     throw new Error('No MessagePassed event found')
   }
 
