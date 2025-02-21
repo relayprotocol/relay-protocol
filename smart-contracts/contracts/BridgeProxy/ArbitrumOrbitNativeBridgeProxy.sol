@@ -10,7 +10,6 @@ import {IOutbox} from "../interfaces/arb/IOutbox.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // errors
-error WrongSender(address sender);
 error AssetMismatch(address expected, address actual);
 
 contract ArbitrumOrbitNativeBridgeProxy is BridgeProxy {
@@ -39,7 +38,6 @@ contract ArbitrumOrbitNativeBridgeProxy is BridgeProxy {
   // TODO: BUG: we should pass the L2 token, and get the L1 token... not the other way around!
   // DOCS https://docs.arbitrum.io/build-decentralized-apps/token-bridging/token-bridge-erc20
   function bridge(
-    address sender,
     address asset, //l2 token
     address l1Currency, //l1 token
     uint256 amount,
@@ -54,9 +52,6 @@ contract ArbitrumOrbitNativeBridgeProxy is BridgeProxy {
       if (l2token != asset) {
         revert AssetMismatch(l2token, asset);
       }
-
-      // Take the ERC20 tokens from the sender
-      IERC20(l2token).transferFrom(sender, address(this), amount);
 
       // here we have to pass empty data as data has been disabled in the default
       // gateway (see EXTRA_DATA_DISABLED in Arbitrum's L2GatewayRouter.sol)

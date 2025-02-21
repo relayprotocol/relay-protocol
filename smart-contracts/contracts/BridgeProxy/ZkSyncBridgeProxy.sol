@@ -20,17 +20,11 @@ contract ZkSyncBridgeProxy is BridgeProxy {
   }
 
   function bridge(
-    address sender,
     address currency,
     address /* l1Asset */,
     uint256 amount,
     bytes calldata /*data*/
   ) external payable override {
-    if (currency != address(0)) {
-      // Take the ERC20 tokens from the sender
-      IERC20(currency).transferFrom(sender, address(this), amount);
-    }
-
     // withdraw to L1
     L2_SHARED_BRIDGE.withdraw(L1_BRIDGE_PROXY, currency, amount);
   }
