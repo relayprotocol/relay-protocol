@@ -41,7 +41,7 @@ contract CCTPBridgeProxy is BridgeProxy {
     bytes calldata /*data*/
   ) external payable override {
     if (currency != USDC) {
-      revert TOKEN_NOT_BRIDGED(currency);
+      revert TokenNotBridged(currency);
     }
 
     // transfer token to this contract first

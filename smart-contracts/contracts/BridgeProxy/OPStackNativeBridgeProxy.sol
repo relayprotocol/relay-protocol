@@ -39,7 +39,7 @@ contract OPStackNativeBridgeProxy is BridgeProxy {
       // First, check that this is a "bridged ERC20" token
       address l1Token = IOptimismMintableERC20(currency).remoteToken();
       if (l1Token == address(0)) {
-        revert TOKEN_NOT_BRIDGED(currency);
+        revert TokenNotBridged(currency);
       }
 
       // Take the ERC20 tokens from the sender

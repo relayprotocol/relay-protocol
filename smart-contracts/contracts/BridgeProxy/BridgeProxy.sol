@@ -5,10 +5,10 @@ pragma solidity ^0.8.28;
 
 contract BridgeProxy {
   // errors
-  error TOKEN_NOT_BRIDGED(address token);
-  error NOT_AUTHORIZED(address user, uint256 chainId);
-  error BRIDGE_NOT_IMPLEMENTED();
-  error TRANSFER_FAILED(uint256 amount);
+  error TokenNotBridged(address token);
+  error NotAuthorized(address user, uint256 chainId);
+  error BridgeNotImplemented();
+  error TransferFailed(uint256 amount);
 
   uint256 public immutable RELAY_POOL_CHAIN_ID;
   address public immutable RELAY_POOL;
@@ -38,7 +38,7 @@ contract BridgeProxy {
     uint256 /*amount*/,
     bytes calldata /*data*/
   ) external payable virtual {
-    revert BRIDGE_NOT_IMPLEMENTED();
+    revert BridgeNotImplemented();
   }
 
   // This should be called by Pool contract as a way to claim funds received from
@@ -53,7 +53,7 @@ contract BridgeProxy {
       balance = address(this).balance;
       (bool success, ) = RELAY_POOL.call{value: balance}("");
       if (!success) {
-        revert TRANSFER_FAILED(balance);
+        revert TransferFailed(balance);
       }
     } else {
       balance = IERC20(currency).balanceOf(address(this));
@@ -64,7 +64,7 @@ contract BridgeProxy {
   // modifier to make sure only the pool can call the claim function!
   modifier onlyRelayPool() {
     if (msg.sender != RELAY_POOL && block.chainid != RELAY_POOL_CHAIN_ID) {
-      revert NOT_AUTHORIZED(msg.sender, block.chainid);
+      revert NotAuthorized(msg.sender, block.chainid);
     }
     _;
   }

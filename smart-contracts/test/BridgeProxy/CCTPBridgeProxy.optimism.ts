@@ -56,7 +56,7 @@ describe('CCTPBridgeProxy', function () {
           parseUnits('100', 6),
           '0x' //empty data
         ),
-        'TOKEN_NOT_BRIDGED'
+        'TokenNotBridged'
       )
     })
   })

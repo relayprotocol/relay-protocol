@@ -373,7 +373,7 @@ describe('RelayPoolNativeGateway', () => {
           to: await nativeGateway.getAddress(),
           value: ethers.parseUnits('1', 18),
         }),
-        'onlyWethCanSendEth()'
+        'OnlyWethCanSendEth()'
       )
     })
 
