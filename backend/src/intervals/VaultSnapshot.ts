@@ -48,11 +48,7 @@ ponder.on('VaultSnapshot:block', async ({ event, context }) => {
       fetchSharePrice(vault.yieldPool), // yield pool's share price
     ])
 
-    // Create a unique snapshot ID by combining chainId, vault address (in lowercase), and block number
-    const id = `${vault.chainId}-${vault.contractAddress.toLowerCase()}-${event.block.number}`
-
     const snapshot = {
-      id,
       vault: vault.contractAddress,
       chainId: vault.chainId,
       blockNumber: event.block.number,
