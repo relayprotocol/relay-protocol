@@ -19,6 +19,8 @@ import './tasks/deploy/relay-bridge'
 import './tasks/deploy/bridge-proxy'
 import './tasks/deploy/relay-pool-factory'
 import './tasks/deploy/relay-bridge-factory'
+import './tasks/deploy/timelock'
+import './tasks/deploy/verify'
 
 // Helpers/tests
 import './tasks/networks'
@@ -140,7 +142,7 @@ const config: HardhatUserConfig = {
   networks,
   etherscan,
   sourcify: {
-    enabled: true,
+    enabled: false,
   },
   solidity: {
     compilers: [

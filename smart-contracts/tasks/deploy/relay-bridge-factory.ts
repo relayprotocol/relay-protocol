@@ -44,6 +44,10 @@ task('deploy:bridge-factory', 'Deploy a relay bridge factory').setAction(
       )
       relayBridgeAddress = await relayBridgeFactory.getAddress()
     }
+    await run('deploy:verify', {
+      address: relayBridgeAddress,
+      constructorArguments: [hyperlaneMailbox],
+    })
     console.log(`relayBridgeFactory deployed to: ${relayBridgeAddress}`)
   }
 )

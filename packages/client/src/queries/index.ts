@@ -7,9 +7,12 @@ export const GET_ALL_POOLS = gql`
         contractAddress
         asset
         chainId
+        name
+        symbol
         outstandingDebt
         totalAssets
         totalShares
+        curator
         origins(limit: 10) {
           totalCount
           items {

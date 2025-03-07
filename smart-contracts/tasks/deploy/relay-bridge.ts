@@ -4,7 +4,7 @@ import { AutoComplete } from 'enquirer'
 import { getAddresses } from '@relay-protocol/addresses'
 import { getEvent } from '@relay-protocol/helpers'
 
-task('deploy:relay-bridge', 'Deploy a bridge proxy')
+task('deploy:bridge', 'Deploy a bridge proxy')
   .addOptionalParam('proxyBridge', 'The Proxy bridge asset')
   .addOptionalParam('asset', 'An ERC20 asset')
   .setAction(
@@ -21,9 +21,9 @@ task('deploy:relay-bridge', 'Deploy a bridge proxy')
         )
       }
 
-      const { BridgeProxy, RelayBridgeFactory } = deployedContracts
+      const { RelayBridgeFactory } = deployedContracts
 
-      const { assets, l1ChainId } = networks[chainId.toString()]
+      const { assets, l1ChainId, bridges } = networks[chainId.toString()]
 
       if (!l1ChainId) {
         throw new Error('This chain does not have a corresponding L1 chain')
@@ -35,12 +35,17 @@ task('deploy:relay-bridge', 'Deploy a bridge proxy')
 
       if (!proxyBridgeAddress) {
         // List proxyBirdges, and select one the!
-        const proxyBridge = await new AutoComplete({
-          name: 'proxyBridge',
-          message: 'Please choose a proxy bridge',
-          choices: Object.keys(BridgeProxy),
+        const proxyBridgeType = await new AutoComplete({
+          name: 'proxyBridgeType',
+          message: 'Please choose a proxy bridge type:',
+          choices: Object.keys(bridges),
         }).run()
-        proxyBridgeAddress = BridgeProxy[proxyBridge]
+        // Err, we ned to deploy one here!
+        proxyBridgeAddress = await run('deploy:bridge-proxy', {
+          type: proxyBridgeType,
+        })
+
+        // proxyBridgeAddress = BridgeProxy[proxyBridgeType]
       }
 
       if (!assetAddress) {

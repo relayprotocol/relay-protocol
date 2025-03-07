@@ -2866,14 +2866,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@relay-protocol/abis@npm:0.0.5":
-  version: 0.0.5
-  resolution: "@relay-protocol/abis@npm:0.0.5"
-  checksum: 10/c7d0fc1101b0143c9ebe8a22528ab6d46148f312d4189e3020e3351954b77f6b61a06656aa6796263bb50a230e23ae7c205a6af2648d75d073a3b00db875f277
-  languageName: node
-  linkType: hard
-
-"@relay-protocol/abis@workspace:packages/abis":
+"@relay-protocol/abis@workspace:*, @relay-protocol/abis@workspace:packages/abis":
   version: 0.0.0-use.local
   resolution: "@relay-protocol/abis@workspace:packages/abis"
   dependencies:
@@ -2905,7 +2898,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@relay-protocol/backend@workspace:backend"
   dependencies:
-    "@relay-protocol/abis": "npm:0.0.5"
+    "@relay-protocol/abis": "workspace:*"
     "@relay-protocol/addresses": "workspace:*"
     "@types/node": "npm:22.13.0"
     "@typescript-eslint/eslint-plugin": "npm:8.23.0"
