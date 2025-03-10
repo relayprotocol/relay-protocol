@@ -1,6 +1,6 @@
 // hardhat ignition is not supported rn
 // https://github.com/NomicFoundation/hardhat-ignition/issues/825
-import { Deployer } from '@matterlabs/hardhat-zksync-deploy'
+import  { Deployer } from '@matterlabs/hardhat-zksync'
 import { type JsonRpcResult } from 'ethers'
 import networks from '@relay-protocol/networks'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'

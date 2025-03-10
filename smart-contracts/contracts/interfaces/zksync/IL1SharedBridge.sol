@@ -13,6 +13,19 @@ pragma solidity ^0.8.28;
 ///   _message The L2 withdraw data, stored in an L2 -> L1 message
 ///   _merkleProof The Merkle proof of the inclusion L2 -> L1 message about withdrawal initialization
 interface IL1SharedBridge {
+  event WithdrawalFinalizedSharedBridge(
+    uint256 indexed chainId,
+    address indexed to,
+    address indexed l1Token,
+    uint256 amount
+  );
+
+  function isWithdrawalFinalized(
+    uint256 _chainId,
+    uint256 _l2BatchNumber,
+    uint256 _l2MessageIndex
+  ) external view returns (bool);
+
   function finalizeWithdrawal(
     uint256 _chainId,
     uint256 _l2BatchNumber,
