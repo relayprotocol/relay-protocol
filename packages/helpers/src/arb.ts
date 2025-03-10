@@ -150,7 +150,7 @@ export async function constructArbProof(
       ethers.Typed.uint64(leaf) // position
     )
 
-  const values = {
+  return {
     arbBlockNum,
     caller,
     callvalue,
@@ -161,6 +161,4 @@ export async function constructArbProof(
     proof: proof.toArray(),
     timestamp,
   }
-
-  return values
 }

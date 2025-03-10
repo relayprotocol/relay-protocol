@@ -22,6 +22,7 @@ export const arbitrumOne: L2NetworkConfig = {
   assets: {
     udt: '0xd5d3aA404D7562d09a848F96a8a8d5D65977bF90',
     usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    arb: '0x912CE59144191C1204E64559FE8253a0e49E6548',
   },
   rpc: process.env.RPC_42161
     ? [process.env.RPC_42161]
