@@ -84,7 +84,7 @@ describe('op withdrawal helper', function () {
     })
   })
 
-  it.skip('should work for the base sequence using an ERC20', async () => {
+  it('should work for the base sequence using an ERC20', async () => {
     // https://optimistic.etherscan.io/tx/0xe21e6a9d6c214c50d1fa864d21a9db35c9f05b14d683d773146fc8ec42f256c1
     const withdrawalHash =
       '0xe21e6a9d6c214c50d1fa864d21a9db35c9f05b14d683d773146fc8ec42f256c1'
