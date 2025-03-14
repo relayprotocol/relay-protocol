@@ -10,6 +10,7 @@ import {
   RelayPool,
 } from '../../typechain-types'
 import OPStackNativeBridgeProxyModule from '../../ignition/modules/OPStackNativeBridgeProxyModule'
+import { reverts } from '../utils/errors'
 
 const relayBridgeOptimism = '0x0000000000000000000000000000000000000010'
 const relayBridgeBase = '0x0000000000000000000000000000000000008453'
@@ -75,7 +76,7 @@ describe('RelayPool: claim for native ETH', () => {
       const bridgeProxyParameters = {
         OPStackNativeBridgeProxy: {
           portalProxy,
-          relayPoolChainId: 1,
+          relayPoolChainId: 31337,
           relayPool: await relayPool.getAddress(),
           l1BridgeProxy: ethers.ZeroAddress,
         },
@@ -313,6 +314,132 @@ describe('RelayPool: claim for native ETH', () => {
       expect(await relayPool.outstandingDebt()).to.equal(0)
     })
   })
+
+  describe('unauthorized claims', () => {
+    let origin: any
+    let bridgedAmount: bigint
+    it('should prevent from claiming from unauthorized chain', async () => {
+      // add origin
+      const bridgeProxyParameters = {
+        OPStackNativeBridgeProxy: {
+          portalProxy,
+          relayPoolChainId: 100,
+          relayPool: await relayPool.getAddress(),
+          l1BridgeProxy: ethers.ZeroAddress,
+        },
+      }
+      const { bridge: opBridgeProxy } = await ignition.deploy(
+        OPStackNativeBridgeProxyModule,
+        {
+          parameters: bridgeProxyParameters,
+        }
+      )
+
+      origin = {
+        chainId: 10,
+        bridge: relayBridgeOptimism, // should not matter
+        maxDebt: ethers.parseEther('10'),
+        proxyBridge: await opBridgeProxy.getAddress(),
+        bridgeFee: 10,
+        curator: userAddress,
+        coolDown: 0,
+      }
+
+      relayPool.addOrigin(origin)
+
+      // Fund the pool with some WETH
+      await myWeth.deposit({ value: ethers.parseEther('3') })
+      await myWeth.approve(await relayPool.getAddress(), ethers.parseEther('3'))
+      await relayPool.deposit(ethers.parseEther('3'), userAddress)
+
+      bridgedAmount = ethers.parseEther('0.2')
+
+      // Borrow from the pool so we can claim later
+      await relayPool.handle(
+        origin.chainId,
+        ethers.zeroPadValue(origin.bridge, 32),
+        encodeData(10n, userAddress, bridgedAmount)
+      )
+
+      // Send the funds to the bridgeProxy (simulate successful bridging)
+      const [user] = await ethers.getSigners()
+      await user.sendTransaction({
+        to: origin.proxyBridge,
+        value: bridgedAmount,
+      })
+
+      expect(
+        await ethers.provider.getBalance(origin.proxyBridge)
+      ).to.be.greaterThan(0)
+
+      // will revert here as block.chainid should be 100
+      await reverts(
+        relayPool.claim(origin.chainId, origin.bridge),
+        `NotAuthorized("${await relayPool.getAddress()}", 31337)`
+      )
+    })
+    it('should prevent from claiming from unauthorized caller', async () => {
+      // add origin
+      const bridgeProxyParameters = {
+        OPStackNativeBridgeProxy: {
+          portalProxy,
+          relayPoolChainId: 31337,
+          relayPool: await relayPool.getAddress(),
+          l1BridgeProxy: ethers.ZeroAddress,
+        },
+      }
+      const { bridge: opBridgeProxy } = await ignition.deploy(
+        OPStackNativeBridgeProxyModule,
+        {
+          parameters: bridgeProxyParameters,
+        }
+      )
+
+      origin = {
+        chainId: 10,
+        bridge: relayBridgeOptimism, // should not matter
+        maxDebt: ethers.parseEther('10'),
+        proxyBridge: await opBridgeProxy.getAddress(),
+        bridgeFee: 10,
+        curator: userAddress,
+        coolDown: 0,
+      }
+
+      relayPool.addOrigin(origin)
+
+      // Fund the pool with some WETH
+      await myWeth.deposit({ value: ethers.parseEther('3') })
+      await myWeth.approve(await relayPool.getAddress(), ethers.parseEther('3'))
+      await relayPool.deposit(ethers.parseEther('3'), userAddress)
+
+      bridgedAmount = ethers.parseEther('0.2')
+
+      // Borrow from the pool so we can claim later
+      await relayPool.handle(
+        origin.chainId,
+        ethers.zeroPadValue(origin.bridge, 32),
+        encodeData(11n, userAddress, bridgedAmount)
+      )
+
+      // Send the funds to the bridgeProxy (simulate successful bridging)
+      const [user] = await ethers.getSigners()
+      await user.sendTransaction({
+        to: origin.proxyBridge,
+        value: bridgedAmount,
+      })
+
+      expect(
+        await ethers.provider.getBalance(origin.proxyBridge)
+      ).to.be.greaterThan(0)
+
+      // will revert here as block.chainid should be
+      const maliciousBridge = await ethers.deployContract('MaliciousBridge')
+      await reverts(
+        maliciousBridge.claim(origin.chainId, origin.bridge),
+        `NotAuthorized("${await relayPool.getAddress()}", 31337)`
+      )
+    })
+  })
 })
 
 describe('RelayPool: claim for an ERC20', () => {
@@ -366,7 +493,7 @@ describe('RelayPool: claim for an ERC20', () => {
     const bridgeProxyParameters = {
       OPStackNativeBridgeProxy: {
         portalProxy,
-        relayPoolChainId: 1,
+        relayPoolChainId: 31337,
         relayPool: await relayPool.getAddress(),
         l1BridgeProxy: ethers.ZeroAddress,
       },

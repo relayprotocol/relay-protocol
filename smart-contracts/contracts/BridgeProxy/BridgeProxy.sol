@@ -67,7 +67,7 @@ contract BridgeProxy {
 
   // modifier to make sure only the pool can call the claim function!
   modifier onlyRelayPool() {
-    if (msg.sender != RELAY_POOL && block.chainid != RELAY_POOL_CHAIN_ID) {
+    if (msg.sender != RELAY_POOL || block.chainid != RELAY_POOL_CHAIN_ID) {
       revert NotAuthorized(msg.sender, block.chainid);
     }
     _;
