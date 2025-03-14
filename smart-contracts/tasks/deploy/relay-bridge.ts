@@ -64,7 +64,7 @@ task('deploy:bridge', 'Deploy a bridge proxy')
         constructorArguments: [
           assetAddress,
           proxyBridgeAddress,
-          await factoryContract.hyperlaneMailbox(),
+          await factoryContract.HYPERLANE_MAILBOX(),
         ],
       })
 
