@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ITokenMessenger} from "../interfaces/cctp/ITokenMessenger.sol";
-import {IMessageTransmitter} from "../interfaces/cctp/IMessageTransmitter.sol";
 import {BridgeProxy} from "./BridgeProxy.sol";
 import {IUSDC} from "../interfaces/IUSDC.sol";
 
@@ -12,26 +11,22 @@ import {IUSDC} from "../interfaces/IUSDC.sol";
 // https://developers.circle.com/stablecoins/message-format
 contract CCTPBridgeProxy is BridgeProxy {
   ITokenMessenger public immutable MESSENGER;
-  IMessageTransmitter public immutable TRANSMITTER;
   address public immutable USDC;
 
   /**
    * @param messenger the CCTP TokenMessenger address
-   * @param transmitter the CCTP Trnasmitter address
    * @param usdc the USDC contract address
    *
    * see https://developers.circle.com/stablecoins/supported-domains
    */
   constructor(
     address messenger,
-    address transmitter,
     address usdc,
     uint256 relayPoolChainId,
     address relayPool,
     address l1BridgeProxy
   ) BridgeProxy(relayPoolChainId, relayPool, l1BridgeProxy) {
     MESSENGER = ITokenMessenger(messenger);
-    TRANSMITTER = IMessageTransmitter(transmitter);
     USDC = usdc;
   }
 
