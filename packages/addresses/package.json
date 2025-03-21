@@ -1,6 +1,7 @@
 {
   "name": "@relay-protocol/addresses",
-  "version": "1.0.0",
+  "version": "1.0.4",
+  "license": "MIT",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

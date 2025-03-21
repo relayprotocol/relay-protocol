@@ -43,6 +43,7 @@ export interface NetworkConfig {
   }
   isZKsync?: boolean
   hyperlaneMailbox: string
+  hyperlaneHook?: string // TODO: combine with mailbox in hyperlane: {mailbox, hook}
   isTestnet: boolean
   assets: NetworkAssets
   rpc: [string, ...string[]]

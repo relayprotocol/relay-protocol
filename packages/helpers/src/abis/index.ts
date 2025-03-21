@@ -3,6 +3,7 @@
 // Refer to 'yarn build:index' for more
 
 import ERC20 from './ERC20.json'
+import InterchainGasPaymaster from './InterchainGasPaymaster.json'
 import L2CrossDomainMessenger from './L2CrossDomainMessenger.json'
 import L2StandardBridge from './L2StandardBridge.json'
 import L2ToL1MessagePasser from './L2ToL1MessagePasser.json'
@@ -20,6 +21,7 @@ import Portal2 from './op/Portal2.json'
 
 // exports
 export { ERC20 }
+export { InterchainGasPaymaster }
 export { L2CrossDomainMessenger }
 export { L2StandardBridge }
 export { L2ToL1MessagePasser }

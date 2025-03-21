@@ -21,6 +21,13 @@ const earliestBlocks = {
   sepolia: 7500000,
 }
 
+const usedNetworks = Object.keys(networks).reduce((usedNetworks, chainId) => {
+  return {
+    ...usedNetworks,
+    [networks[chainId].name]: createNetworkConfig(chainId!),
+  }
+}, {})
+
 export default createConfig({
   blocks: {
     VaultSnapshot: {
@@ -132,10 +139,5 @@ export default createConfig({
     connectionString: process.env.DATABASE_URL,
     kind: 'postgres',
   },
-  networks: {
-    arbSepolia: createNetworkConfig(421614),
-    baseSepolia: createNetworkConfig(84532),
-    opSepolia: createNetworkConfig(11155420),
-    sepolia: createNetworkConfig(11155111),
-  },
+  networks: usedNetworks,
 })

@@ -1,20 +1,14 @@
 import { getBalance, checkAllowance, getEvent } from '@relay-protocol/helpers'
-import { Mailbox } from '@relay-protocol/helpers/abis'
+import { Mailbox, InterchainGasPaymaster } from '@relay-protocol/helpers/abis'
 import { Select, Input } from 'enquirer'
 
 import { task } from 'hardhat/config'
 import { getBalance, checkAllowance } from '@relay-protocol/helpers'
 import { networks } from '@relay-protocol/networks'
-import {
-  GET_ORIGINS_WITH_BRIDGE,
-  GET_RELAY_BRIDGES_BY_NETWORK_AND_ASSET,
-  RelayVaultService,
-} from '@relay-protocol/client'
 
 task('bridge:send', 'Send tokens to a pool across a relay bridge')
   .addOptionalParam('asset', 'The address of the asset you want to bridge')
   .addOptionalParam('bridge', 'The Relay Bridge contract address')
-  .addOptionalParam('pool', 'Pool address on destination chain')
   .addOptionalParam('amount', 'the amount of tokens to send')
   .addOptionalParam('recipient', 'The recipient of the funds (default to self)')
   .addOptionalParam(
@@ -24,7 +18,6 @@ task('bridge:send', 'Send tokens to a pool across a relay bridge')
   .setAction(
     async (
       {
-        asset: assetAddress,
         bridge: bridgeAddress,
         pool: poolAddress,
         amount,
@@ -52,69 +45,12 @@ task('bridge:send', 'Send tokens to a pool across a relay bridge')
       }
       const { assets, l1ChainId } = net
 
-      if (!assetAddress) {
-        const asset = await new Select({
-          choices: ['native', ...Object.keys(assets)],
-          message: 'Please choose the asset you want to bridge:',
-          name: 'asset',
-        }).run()
-        if (asset === 'native') {
-          assetAddress = rawEthers.ZeroAddress
-        } else {
-          assetAddress = assets[asset]
-        }
-      }
-
-      const vaultService = new RelayVaultService(
-        'https://relay-protocol-production.up.railway.app/' // TODO: add to config?
-      )
-
       if (!bridgeAddress) {
-        // List bridges using the backend
-        const { relayBridges } = await vaultService.query(
-          GET_RELAY_BRIDGES_BY_NETWORK_AND_ASSET,
-          {
-            assetAddress,
-            chainId: Number(chainId), // This is the origin chain (L2)
-          }
-        )
-        if (relayBridges.items.length === 0) {
-          throw new Error(
-            `No pools found curated by ${userAddress} on ${chainId}!`
-          )
-        } else if (relayBridges.items.length === 1) {
-          bridgeAddress = relayBridges.items[0].contractAddress
-        } else {
-          bridgeAddress = await new Select({
-            choices: relayBridges.items.map((bridge) => bridge.contractAddress),
-            message: 'Multiple bridges found. Please choose one:',
-            name: 'bridgeAddress',
-          }).run()
-        }
+        // TODO: lookup!
       }
 
-      if (!poolAddress) {
-        const { poolOrigins } = await vaultService.query(
-          GET_ORIGINS_WITH_BRIDGE,
-          {
-            originBridge: bridgeAddress,
-            originChainId: Number(chainId),
-          }
-        )
-        if (poolOrigins.items.length === 0) {
-          throw new Error('No pools found that uses this bridge as an origin!')
-        } else if (poolOrigins.items.length === 1) {
-          poolAddress = poolOrigins.items[0].pool.contractAddress
-        } else {
-          poolAddress = await new Select({
-            choices: poolOrigins.items.map(
-              (origin) => origin.pool.contractAddress
-            ),
-            message: 'Multiple pools found. Please choose one:',
-            name: 'poolAddress',
-          }).run()
-        }
-      }
+      const bridge = await ethers.getContractAt('RelayBridge', bridgeAddress)
+      const assetAddress = await bridge.ASSET()
 
       let decimals = 18n
       if (assetAddress !== rawEthers.ZeroAddress) {
@@ -135,13 +71,15 @@ task('bridge:send', 'Send tokens to a pool across a relay bridge')
       if (!recipient) recipient = userAddress
 
       // TODO: check balance on pool as well and warn if insufficient balance on the pool!
+      // TODO: check if the root actually works! (origin supported!)
 
-      // check balance
+      // check balance of asset to transfer
       const balance = await getBalance(
         userAddress,
         assetAddress,
         ethers.provider
       )
+
       if (balance < amount) {
         throw Error(
           `Insufficient balance (actual: ${balance}, expected: ${amount})`
@@ -154,23 +92,34 @@ task('bridge:send', 'Send tokens to a pool across a relay bridge')
         await checkAllowance(asset, bridgeAddress, amount, userAddress)
       }
 
-      const bridge = await ethers.getContractAt('RelayBridge', bridgeAddress)
-      const hyperlaneFee = bridge.getFee(amount, recipient)
+      const hyperlaneFee = await bridge.getFee(amount, recipient)
+
       const value =
         assetAddress === rawEthers.ZeroAddress
           ? BigInt(amount) + hyperlaneFee
           : hyperlaneFee
 
-      const tx = await bridge.bridge(
-        amount,
-        recipient,
-        destChain, // chain
-        poolAddress,
-        {
-          gasLimit: 25000000,
-          value,
-        }
+      // check the balance of native to pay for value + hyperlaneFee
+      const balanceNative = await getBalance(
+        userAddress,
+        rawEthers.ZeroAddress,
+        ethers.provider
       )
+
+      if (balanceNative < value) {
+        throw Error(
+          `Insufficient balance to cover for Hyperlane fee (actual: ${balanceNative}, expected: ${value})`
+        )
+      }
+
+      let l1Asset = ethers.ZeroAddress
+      if (assetAddress !== ethers.ZeroAddress) {
+        throw Error('Not implemented yet')
+      }
+
+      const tx = await bridge.bridge(amount, recipient, l1Asset, {
+        value,
+      })
 
       // TODO: parse tx results
       const receipt = await tx.wait()
@@ -188,74 +137,83 @@ task('bridge:send', 'Send tokens to a pool across a relay bridge')
     }
   )
 
-task('bridge:send-proxy', 'Send tokens across a proxy bridge (test purposes)')
-  // .addParam('asset', 'The ERC20 asset to deposit')
-  .addParam('bridge', 'The bridge contract address')
-  .addParam('amount', 'the amount of tokens to send')
-  .addOptionalParam(
-    'destChain',
-    'the id of destination chain (default to eth mainnet)'
-  )
-  .addOptionalParam('asset', 'the asset to send (default to native)')
-  .addOptionalParam('recipient', 'The recipient of the funds (default to self)')
-  .setAction(
-    async (
-      {
-        bridge: bridgeAddress,
-        amount,
-        destChain,
-        asset: assetAddress,
-        recipient,
-      },
-      { ethers: rawEthers, zksyncEthers }
-    ) => {
-      const { chainId } = await rawEthers.provider.getNetwork()
-      const { isZksync } = networks[chainId.toString()]
-      const ethers = isZksync ? zksyncEthers : rawEthers
-      const bridge = await ethers.getContractAt('BridgeProxy', bridgeAddress)
-      const [user] = await ethers.getSigners()
-      const userAddress = await user.getAddress()
-
-      // parse default values
-      if (!assetAddress) assetAddress = ethers.ZeroAddress
-      if (!recipient) recipient = userAddress
-      if (!destChain) destChain = 1
-
-      // check balance
-      const balance = await getBalance(
-        userAddress,
-        assetAddress,
-        ethers.provider
-      )
-      if (balance < amount) {
-        throw Error(
-          `Insufficient balance (actual: ${balance}, expected: ${amount})`
-        )
-      }
-
-      // check allowance
-      if (assetAddress != ethers.ZeroAddress) {
-        const asset = await ethers.getContractAt('MyToken', assetAddress)
-        await checkAllowance(asset, bridgeAddress, amount, userAddress)
-      }
-
-      // send tx
-      const tx = await bridge.bridge(
-        userAddress, // sender
-        destChain, // destinationChainId,
-        recipient, // recipient
-        assetAddress, // asset
-        amount, // amount
-        '0x', // data
-        {
-          value: assetAddress === ethers.ZeroAddress ? amount : 0,
-        }
-      )
-
-      // parse tx results
-      const receipt = await tx.wait()
-      console.log(receipt?.logs)
-      // TODO: check for AssetsDepositedIntoYieldPool or similar
-      // const event = await getEvent(receipt, 'MessagePassed')
+task('bridge:pay-gas', 'Pay extra gas when a message is stuck')
+  .addParam('messageId', 'The Hyperlane message id')
+  .addParam('destChain', 'the chain destination of the pool')
+  .addParam('gasAmount', 'the amount of tokens to send')
+  .setAction(async ({ messageId, destChain, gasAmount }, { ethers }) => {
+    const [user] = await ethers.getSigners()
+    const { chainId } = await ethers.provider.getNetwork()
+    const networkConfig = networks[chainId.toString()]
+    const { hyperlaneHook } = networkConfig
+    if (!hyperlaneHook) {
+      throw Error('Hyperlane hook not found')
     }
-  )
+    const paymaster = await new ethers.Contract(
+      hyperlaneHook,
+      InterchainGasPaymaster,
+      user
+    )
+    const userAddress = await user.getAddress()
+    const value = await paymaster.quoteGasPayment(destChain, gasAmount)
+    const tx = await paymaster.payForGas(
+      messageId,
+      destChain,
+      gasAmount,
+      userAddress,
+      {
+        value,
+      }
+    )
+
+    console.log(tx)
+
+    // const receipt = await tx.wait()
+    // console.log(receipt)
+    // const ethers = isZksync ? zksyncEthers : rawEthers
+    // const bridge = await ethers.getContractAt('BridgeProxy', bridgeAddress)
+    // const [user] = await ethers.getSigners()
+    // const userAddress = await user.getAddress()
+
+    // // parse default values
+    // if (!assetAddress) assetAddress = ethers.ZeroAddress
+    // if (!recipient) recipient = userAddress
+    // if (!destChain) destChain = 1
+
+    // // check balance
+    // const balance = await getBalance(
+    //   userAddress,
+    //   assetAddress,
+    //   ethers.provider
+    // )
+    // if (balance < amount) {
+    //   throw Error(
+    //     `Insufficient balance (actual: ${balance}, expected: ${amount})`
+    //   )
+    // }
+
+    // // check allowance
+    // if (assetAddress != ethers.ZeroAddress) {
+    //   const asset = await ethers.getContractAt('MyToken', assetAddress)
+    //   await checkAllowance(asset, bridgeAddress, amount, userAddress)
+    // }
+
+    // // send tx
+    // const tx = await bridge.bridge(
+    //   userAddress, // sender
+    //   destChain, // destinationChainId,
+    //   recipient, // recipient
+    //   assetAddress, // asset
+    //   amount, // amount
+    //   '0x', // data
+    //   {
+    //     value: assetAddress === ethers.ZeroAddress ? amount : 0,
+    //   }
+    // )
+
+    // // parse tx results
+    // const receipt = await tx.wait()
+    // console.log(receipt?.logs)
+    // // TODO: check for AssetsDepositedIntoYieldPool or similar
+    // // const event = await getEvent(receipt, 'MessagePassed')
+  })

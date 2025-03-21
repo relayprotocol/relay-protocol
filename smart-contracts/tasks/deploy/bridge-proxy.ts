@@ -25,6 +25,20 @@ export const getPoolsForNetwork = async (chainId: number) => {
   })
 }
 
+export const getBridgesForNetwork = async (chainId: number) => {
+  const bridges = await fs.promises.readdir(
+    `${ignitionPath}/bridges/${chainId}`
+  )
+  return bridges.map((address) => {
+    return {
+      address: address,
+      params: require(
+        `${ignitionPath}/bridges/${chainId}/${address}/params.json`
+      ),
+    }
+  })
+}
+
 task('deploy:bridge-proxy', 'Deploy a bridge proxy')
   .addOptionalParam('type', 'the type of bridge to deploy')
   .addOptionalParam(
@@ -53,6 +67,9 @@ task('deploy:bridge-proxy', 'Deploy a bridge proxy')
         name: 'type',
       }).run()
     }
+    console.log(
+      `Deploying ${isL2 ? Number(l1ChainId) : Number(chainId)} bridge proxy...`
+    )
 
     if (!poolAddress) {
       const pools = await getPoolsForNetwork(

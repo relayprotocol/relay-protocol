@@ -10,6 +10,7 @@
  * 4. Stores the snapshot with block metadata in the vaultSnapshot table.
  */
 
+import { eq } from 'ponder'
 import { ponder } from 'ponder:registry'
 import { vaultSnapshot, relayPool } from 'ponder:schema'
 import { erc4626Abi, erc20Abi } from 'viem'
@@ -39,7 +40,11 @@ ponder.on('VaultSnapshot:block', async ({ event, context }) => {
   }
 
   // Retrieve all vaults from the relayPool table
-  const vaults = await context.db.sql.select().from(relayPool).execute()
+  const vaults = await context.db.sql
+    .select()
+    .from(relayPool)
+    .where(eq(relayPool.chainId, context.network.chainId))
+    .execute()
 
   for (const vault of vaults) {
     // Fetch vault and yield pool share prices concurrently (they are independent)

@@ -1,6 +1,6 @@
 {
   "name": "@relay-protocol/abis",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "license": "MIT",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -11,23 +11,25 @@
       "require": "./dist/index.js"
     }
   },
-  "files": [
-    "abis",
-    "index.js",
-    "dist"
-  ],
   "scripts": {
     "release": "npm publish",
     "clean": "rm -rf src dist",
     "build:contracts": "yarn workspace @relay-protocol/smart-contracts build",
     "build:export-abis": "yarn workspace @relay-protocol/smart-contracts build:abis",
     "build:ts": "tsup src/index.ts --dts --format esm,cjs",
-    "build": "yarn build:contracts && yarn build:export-abis && yarn build:ts"
+    "build": "yarn build:contracts && yarn build:export-abis && yarn build:ts",
+    "lint:fix": "yarn lint --fix",
+    "lint": "eslint"
   },
   "devDependencies": {
     "@relay-protocol/helpers": "^workspace:*",
     "@relay-protocol/networks": "^workspace:*",
     "tsup": "8.3.6",
     "typescript": "5.7.3"
-  }
+  },
+  "files": [
+    "abis",
+    "index.js",
+    "dist"
+  ]
 }
