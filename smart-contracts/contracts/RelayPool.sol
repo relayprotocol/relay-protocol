@@ -15,6 +15,8 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 struct OriginSettings {
+  uint32 chainId;
+  address bridge;
   address curator;
   uint256 maxDebt;
   uint256 outstandingDebt;
@@ -228,6 +230,8 @@ contract RelayPool is ERC4626, Ownable {
 
   function addOrigin(OriginParam memory origin) public onlyOwner {
     authorizedOrigins[origin.chainId][origin.bridge] = OriginSettings({
+      chainId: origin.chainId,
+      bridge: origin.bridge,
       curator: origin.curator, // We can't use msg.sender here, because we recommend msg.sender to be a timelock and this address should be able to disable an origin quickly!
       maxDebt: origin.maxDebt,
       outstandingDebt: 0,
