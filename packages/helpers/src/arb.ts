@@ -10,6 +10,7 @@ import ARBSYS_ABI from './abis/arb/IArbSys.json'
 import NODE_INTERFACE_ABI from './abis/arb/INodeInterface.json'
 
 const NODE_INTERFACE_ADDRESS = '0x00000000000000000000000000000000000000C8'
+const ARBSYS_ADDRESS = '0x0000000000000000000000000000000000000064'
 
 const getLatestConfirmedBlockCoords = async function (chainId: bigint) {
   let rollupAddress: string
@@ -118,23 +119,29 @@ export async function constructArbProof(
   }
 
   // get merkle tree size
-  // NB: calling `sendMerkleTreeState` on ArbSys returned a wrong value
-  // that makes the merkle computation fails when claiming later from the outbox
-  // so we have to get the size directly from the latest "rolled up" block
-  const { blockHash: latestConfirmedBlockHash } =
-    await getLatestConfirmedBlockCoords(l1ChainId)
+  const arbsys = new ethers.Contract(
+    ARBSYS_ADDRESS,
+    arbsysInterface,
+    arbProvider
+  )
+  const { size: sendRootSize } = await arbsys.sendMerkleTreeState.staticCall()
 
-  // fetch raw block
+  // fetch latest confirmed block from RPC
   // NB: we have to use a json rpc call as ethers will filter out
   // additional block params added by Arbitrum
+  const { blockHash: latestConfirmedBlockHash } =
+    await getLatestConfirmedBlockCoords(l1ChainId)
   const latestConfirmededBlock = await fetchRawBlock(
     l2ChainId,
     latestConfirmedBlockHash
   )
-
-  // TODO: make sure fetched block sendRoot if identical to the one in coords
   const sendRootSizeConfirmed = BigInt(latestConfirmededBlock.sendCount)
 
+  if (leaf > sendRootSizeConfirmed) {
+    throw Error(
+      `Leaf ${leaf} not in tree yet: (size: ${sendRootSize}, ${sendRootSizeConfirmed})`
+    )
+  }
   // use Arb's NodeInterface precompiled to comppute proof
   const INodeInterface = new ethers.Interface(NODE_INTERFACE_ABI)
   const nodeInterface = new ethers.Contract(
@@ -146,7 +153,7 @@ export async function constructArbProof(
   // construct actual proof using
   const { /*send , root, */ proof } =
     await nodeInterface.constructOutboxProof.staticCall(
-      sendRootSizeConfirmed,
+      sendRootSizeConfirmed, //sendRootSize,
       ethers.Typed.uint64(leaf) // position
     )
 

@@ -34,6 +34,7 @@ export const ethereum: L1NetworkConfig = {
     udt: '0x90DE74265a416e1393A450752175AED98fe11517',
     usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     weth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    arb: '0xB50721BCf8d664c30412Cfbc6cf7a15145234ad1',
   },
   uniswapV3: {
     universalRouterAddress: '0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B',
