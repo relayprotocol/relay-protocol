@@ -4398,6 +4398,7 @@ __metadata:
     "@openzeppelin/contracts": "npm:5.2.0"
     "@openzeppelin/contracts-upgradeable": "npm:5.2.0"
     "@relay-protocol/helpers": "workspace:*"
+    "@relay-protocol/tsconfig": "workspace:*"
     "@typechain/ethers-v6": "npm:0.5.1"
     "@typechain/hardhat": "npm:9.1.0"
     "@types/chai": "npm:4.3.20"
@@ -4432,7 +4433,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@relay-protocol/tsconfig@workspace:./packages/tsconfig, @relay-protocol/tsconfig@workspace:^, @relay-protocol/tsconfig@workspace:packages/tsconfig, @unlock-protocol/tsconfig@workspace:./packages/tsconfig":
+"@relay-protocol/tsconfig@workspace:*, @relay-protocol/tsconfig@workspace:./packages/tsconfig, @relay-protocol/tsconfig@workspace:^, @relay-protocol/tsconfig@workspace:packages/tsconfig, @unlock-protocol/tsconfig@workspace:./packages/tsconfig":
   version: 0.0.0-use.local
   resolution: "@relay-protocol/tsconfig@workspace:packages/tsconfig"
   languageName: unknown
