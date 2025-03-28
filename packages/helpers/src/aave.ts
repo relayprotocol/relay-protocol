@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { ethers } from 'ethers-v6'
 import {
   AaveV3Ethereum,
   AaveV3Sepolia,

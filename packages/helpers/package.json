@@ -17,7 +17,8 @@
   "license": "MIT",
   "dependencies": {
     "@bgd-labs/aave-address-book": "4.9.0",
-    "ethers": "6.13.5",
+    "ethers": "npm:ethers@5.7.2",
+    "ethers-v6": "npm:ethers@6.13.5",
     "zksync-ethers": "6.16.1"
   },
   "scripts": {

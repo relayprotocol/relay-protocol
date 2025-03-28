@@ -1,5 +1,5 @@
 import { Provider, types, L1Signer } from 'zksync-ethers'
-import { JsonRpcSigner } from 'ethers'
+import { JsonRpcSigner } from 'ethers-v6'
 
 /**
  * Finalizes a ZKSync withdrawal transaction

@@ -1,7 +1,7 @@
 /**
  * Helpers for CCTP bridge
  */
-import { ethers } from 'ethers'
+import { ethers } from 'ethers-v6'
 import { networks } from '@relay-protocol/networks'
 import { getProvider } from './provider'
 

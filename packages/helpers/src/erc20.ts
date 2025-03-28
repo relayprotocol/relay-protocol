@@ -1,4 +1,4 @@
-import { type Contract } from 'ethers'
+import { type Contract } from 'ethers-v6'
 
 export async function checkAllowance(
   asset: Contract,

@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { ethers } from 'ethers-v6'
 import { getProvider } from './provider'
 import ERC20_ABI from './abis/ERC20.json'
 

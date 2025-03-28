@@ -1,4 +1,4 @@
-import { AbiCoder, ethers } from 'ethers'
+import { AbiCoder, ethers } from 'ethers-v6'
 import { getEvent } from './events'
 import L2ToL1MessagePasserAbi from './abis/L2ToL1MessagePasser.json'
 import * as rlp from 'rlp'

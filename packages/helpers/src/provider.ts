@@ -1,4 +1,4 @@
-import { ethers, type JsonRpcResult } from 'ethers'
+import { ethers, type JsonRpcResult } from 'ethers-v6'
 import { networks } from '@relay-protocol/networks'
 
 export const getProvider = (chainId: bigint | string | number) => {

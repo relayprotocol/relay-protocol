@@ -1,11 +1,11 @@
-import { ethers } from 'ethers'
+import { ethers } from 'ethers-v6'
 import type {
   TransactionReceipt,
   Log,
   Interface,
   EventLog,
   LogDescription,
-} from 'ethers'
+} from 'ethers-v6'
 import * as abis from './abis'
 
 export const decodeLogs = (

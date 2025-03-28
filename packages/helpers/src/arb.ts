@@ -1,4 +1,4 @@
-import { ethers, JsonRpcApiProvider } from 'ethers'
+import { ethers, JsonRpcApiProvider } from 'ethers-v6'
 import { networks } from '@relay-protocol/networks'
 import { fetchRawBlock, getProvider } from './provider'
 import { getEvent } from './events'
