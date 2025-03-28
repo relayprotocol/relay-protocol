@@ -4,7 +4,7 @@ import L2ToL1MessagePasserAbi from './abis/L2ToL1MessagePasser.json'
 import * as rlp from 'rlp'
 import Portal2 from './abis/op/Portal2.json'
 import DisputeGameFactory from './abis/op/DisputeGameFactory.json'
-import { getProvider } from './provider'
+import { getProvider, fetchRawProof } from './provider'
 
 import { networks } from '@relay-protocol/networks'
 import { L1NetworkConfig, L2NetworkConfig } from '@relay-protocol/types'
@@ -13,20 +13,23 @@ const outputRootProofVersion =
   '0x0000000000000000000000000000000000000000000000000000000000000000' as const
 
 export const getGame = async (
-  chainId: number,
+  chainId: number | bigint,
   minL2BlockNumber: number,
   disputeGameAddress: string,
   portalAddress: string
 ) => {
   const abiCoder = new AbiCoder()
-  const provider = await getProvider(chainId)
-
+  const l1Provider = await getProvider(chainId)
   const disputeGameContract = new ethers.Contract(
     disputeGameAddress,
     DisputeGameFactory,
-    provider
+    l1Provider
   )
-  const portal2Contract = new ethers.Contract(portalAddress, Portal2, provider)
+  const portal2Contract = new ethers.Contract(
+    portalAddress,
+    Portal2,
+    l1Provider
+  )
 
   const [gameCount, gameType] = await Promise.all([
     disputeGameContract.gameCount(),
@@ -36,7 +39,7 @@ export const getGame = async (
   const allGames = await disputeGameContract.findLatestGames(
     gameType,
     BigInt(Math.max(0, Number(gameCount - 1n))),
-    BigInt(Math.min(100, Number(gameCount)))
+    BigInt(Math.min(50, Number(gameCount)))
   )
 
   return allGames.find((game: any) => {
@@ -66,15 +69,14 @@ export const getWithdrawalHash = async (
 
 export const buildProveWithdrawal = async (
   chainId: number,
-  withdrawalTx: string,
-  l1ChainId: number
+  withdrawalTx: string
 ) => {
   const abiCoder = new AbiCoder()
-  const provider = await getProvider(chainId)
-  const network = networks[chainId] as L2NetworkConfig
-  const l1 = networks[l1ChainId] as L1NetworkConfig
+  const l2Provider = await getProvider(chainId)
+  const network = networks[chainId.toString()] as L2NetworkConfig
   // Get receipt
-  const receipt = await provider.getTransactionReceipt(withdrawalTx)
+  const l1 = networks[network.l1ChainId.toString()] as L1NetworkConfig
+  const receipt = await l2Provider.getTransactionReceipt(withdrawalTx)
   if (!receipt) {
     throw new Error('No receipt found for withdrawal transaction')
   }
@@ -89,14 +91,8 @@ export const buildProveWithdrawal = async (
   if (!event || !event.args) {
     throw new Error('No MessagePassed event found')
   }
-
-  const nonce = event.args.nonce // '1766847064778384329583297500742918515827483896875618958121606201292642338' // Get it from `MessagePassed` event's first arg
-  const sender = event.args.sender //'0x4200000000000000000000000000000000000007' // Get it from `MessagePassed` event's second arg
-  const target = event.args.target //'0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1' // Get it from `MessagePassed` event's third arg
-  const value = event.args.value // '1000000000000000' // Get it from `MessagePassed` event's value
-  const gasLimit = event.args.gasLimit // '491310' // Get it from `MessagePassed` event's gasLimit
-  const data = event.args.data // ('0xd764ad0b0001000000000000000000000000000000000000000000000000000000005817000000000000000000000000420000000000000000000000000000000000001000000000000000000000000099c9fc46f92e8a1c0dec1b1747d010903e884be100000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000030d4000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000c41635f5fd000000000000000000000000f5c28ce24acf47849988f147d5c75787c0103534000000000000000000000000f5c28ce24acf47849988f147d5c75787c010353400000000000000000000000000000000000000000000000000038d7ea4c680000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b737570657262726964676500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000') // Get it from `MessagePassed` event's data
-  const withdrawalHash = event.args.withdrawalHash
+  const { nonce, sender, target, value, gasLimit, data, withdrawalHash } =
+    event.args
 
   // Get the slot
   const slot = ethers.keccak256(
@@ -116,13 +112,13 @@ export const buildProveWithdrawal = async (
   }
   const disputeGameAddress = destinationContracts.disputeGame!
   const portalAddress = destinationContracts.portalProxy!
-
   const game = await getGame(
-    l1ChainId,
+    network.l1ChainId,
     receipt!.blockNumber,
     disputeGameAddress,
     portalAddress
   )
+
   if (!game) {
     throw new Error(
       'No game found for withdrawal transaction. Is it too early?'
@@ -131,17 +127,13 @@ export const buildProveWithdrawal = async (
 
   // Get the block
   const gameBlockNumber = abiCoder.decode(['uint256'], game[4])[0] as bigint
-  const block = await provider.getBlock(gameBlockNumber)
+  const block = await l2Provider.getBlock(gameBlockNumber)
   if (!block) {
     throw new Error('No block found for withdrawal transaction game.')
   }
 
   // Get the storage proof
-  const proof = await provider.send('eth_getProof', [
-    '0x4200000000000000000000000000000000000016', // MessagePasser
-    [slot],
-    block!.hash,
-  ])
+  const proof = await fetchRawProof(slot, block!.hash!, BigInt(chainId))
 
   // encode the root proof
   // const outputRootProof = abiCoder.encode(
@@ -221,8 +213,7 @@ export const buildFinalizeWithdrawal = async (
 const main = async () => {
   await buildProveWithdrawal(
     10,
-    '0x8a8ed32ec52267ba5c5656dc68f459a8be3cdd23d8a1128ed321a2c6df2e8ee3',
-    1
+    '0x8a8ed32ec52267ba5c5656dc68f459a8be3cdd23d8a1128ed321a2c6df2e8ee3'
   )
 }
 
