@@ -22,7 +22,7 @@ export const ethereum: L1NetworkConfig = {
       transmitter: '0x0a992d191DEeC32aFe36203Ad87D7d289a738F81',
     },
     lisk: {
-      disputeGame: '0x0479e6757eb4743843b309DDDF78E6bA242F38BE',
+      // disputeGame: '0x0479e6757eb4743843b309DDDF78E6bA242F38BE',
       portalProxy: '0x26dB93F8b8b4f7016240af62F7730979d353f9A7',
     },
     op: {

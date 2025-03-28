@@ -60,14 +60,14 @@ export const proveTransactions = async ({
     }
   )
   for (let i = 0; i < bridgeTransactions.items.length; i++) {
-    try {
-      const bridgeTransaction = bridgeTransactions.items[i]
-      // TODO: use `proxyBridge` to identify which underlying bridge was actually used and
-      // how to process it.
-      // For now we use the chainId to identify the bridge (that won't work for USDC!)
-      await OPstack.submitProof(bridgeTransaction)
-    } catch (error) {
-      console.error(error)
-    }
+    // try {
+    const bridgeTransaction = bridgeTransactions.items[i]
+    // TODO: use `proxyBridge` to identify which underlying bridge was actually used and
+    // how to process it.
+    // For now we use the chainId to identify the bridge (that won't work for USDC!)
+    await OPstack.submitProof(bridgeTransaction)
+    // } catch (error) {
+    //   console.error(error)
+    // }
   }
 }

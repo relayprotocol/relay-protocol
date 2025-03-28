@@ -20,7 +20,6 @@ export const getGame = async (
 ) => {
   const abiCoder = new AbiCoder()
   const provider = await getProvider(chainId)
-
   const disputeGameContract = new ethers.Contract(
     disputeGameAddress,
     DisputeGameFactory,
@@ -64,7 +63,7 @@ export const getWithdrawalHash = async (
   return event.args.withdrawalHash
 }
 
-export const buildProveWithdrawal = async (
+export const buildOpProveWithdrawal = async (
   chainId: number,
   withdrawalTx: string,
   l1ChainId: number
@@ -114,6 +113,8 @@ export const buildProveWithdrawal = async (
   if (!destinationContracts) {
     throw new Error(`No destination contracts found for ${slug}`)
   }
+
+  // Is thos bedrock specific?
   const disputeGameAddress = destinationContracts.disputeGame!
   const portalAddress = destinationContracts.portalProxy!
 
@@ -175,11 +176,12 @@ export const buildProveWithdrawal = async (
       target,
       value,
     },
+    withdrawalHash,
     withdrawalProof,
   }
 }
 
-export const buildFinalizeWithdrawal = async (
+export const buildFinalizeOpWithdrawal = async (
   network: number,
   withdrawalTx: string
 ) => {
@@ -197,7 +199,7 @@ export const buildFinalizeWithdrawal = async (
     'MessagePassed',
     new ethers.Interface(L2ToL1MessagePasserAbi)
   )
-  if (!event) {
+  if (!event || !event.args) {
     throw new Error('No MessagePassed event found')
   }
 
@@ -216,14 +218,6 @@ export const buildFinalizeWithdrawal = async (
     target,
     value,
   }
-}
-
-const main = async () => {
-  await buildProveWithdrawal(
-    10,
-    '0x8a8ed32ec52267ba5c5656dc68f459a8be3cdd23d8a1128ed321a2c6df2e8ee3',
-    1
-  )
 }
 
 /**
@@ -261,14 +255,4 @@ export const maybeAddProofNode = (key: string, proof: string[]) => {
 
   // Return the modified proof.
   return modifiedProof
-}
-
-// execute as standalone
-if (require.main === module) {
-  main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error(error)
-      process.exit(1)
-    })
 }
