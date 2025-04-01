@@ -1,0 +1,7 @@
+{
+  "extends": "@relay-protocol/tsconfig",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "exclude": ["dist"]
+} 

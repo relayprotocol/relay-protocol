@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "test": "yarn packages --parallel run test",
-    "packages": "yarn workspaces foreach --recursive --from '{@relay-protocol/addresses,@relay-protocol/eslint-config,@relay-protocol/helpers,@relay-protocol/networks,@relay-protocol/tsconfig,@relay-protocol/types,@relay-protocol/abis,@relay-protocol/client}'",
+    "packages": "yarn workspaces foreach --recursive --from '{@relay-protocol/addresses,@relay-protocol/eslint-config,@relay-protocol/helpers,@relay-protocol/networks,@relay-protocol/tsconfig,@relay-protocol/types,@relay-protocol/abis,@relay-protocol/client,@relay-protocol/arb-claimer}'",
     "packages:clean": "yarn packages --parallel run clean",
     "packages:build": "yarn packages --topological-dev run build",
     "prebuild": "yarn workspace @relay-protocol/backend codegen",
