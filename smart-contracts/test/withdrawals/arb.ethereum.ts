@@ -3,7 +3,6 @@ import { ZeroAddress } from 'ethers'
 import { expect } from 'chai'
 import { constructArbProof, getEvent } from '@relay-protocol/helpers'
 
-import { ArbitrumOrbitNativeBridgeProxy } from '../../typechain-types'
 import { networks } from '@relay-protocol/networks'
 import { getBalance } from '@relay-protocol/helpers'
 
@@ -86,8 +85,7 @@ describe('Arbitrum Orbit withdrawal', function () {
     expect(balanceAfter).to.equals(balanceBefore + amount)
   })
 
-  // skipping for now as tx isnt ready to withdraw now
-  it.skip('works with ERC20 (ARB token)', async () => {
+  it('works with ERC20 (ARB token)', async () => {
     // https://arbiscan.io/tx/0x8f1b720a0361d4433cdb5693d4bb1cad8867f8551a3bafce7254422b80f92154
     const txHash =
       '0x8f1b720a0361d4433cdb5693d4bb1cad8867f8551a3bafce7254422b80f92154'
