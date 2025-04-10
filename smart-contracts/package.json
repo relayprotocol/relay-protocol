@@ -8,6 +8,9 @@
   "scripts": {
     "build": "yarn hardhat compile",
     "build:abis": "yarn hardhat export:abis",
+    "coverage": "yarn coverage:hardhat",
+    "coverage:hardhat": "yarn hardhat coverage --testfiles 'test/**/*.hardhat.ts'",
+    "coverage:ethereum": "RPC_URL=https://mainnet.gateway.tenderly.co yarn hardhat coverage --testfiles 'test/**/*.ethereum.ts'",
     "test": "yarn run test:optimism && yarn run test:base && yarn run test:hardhat && yarn run test:ethereum && yarn run test:zksync",
     "test:base": "RPC_URL=https://gateway.tenderly.co/public/base yarn hardhat test test/**/*.base.ts",
     "test:hardhat": "yarn hardhat test test/**/*.hardhat.ts",
@@ -33,6 +36,7 @@
     "@nomicfoundation/hardhat-toolbox": "5.0.0",
     "@nomicfoundation/hardhat-verify": "2.0.12",
     "@relay-protocol/helpers": "workspace:*",
+    "@relay-protocol/tsconfig": "workspace:*",
     "@typechain/ethers-v6": "0.5.1",
     "@typechain/hardhat": "9.1.0",
     "@types/chai": "4.3.20",
