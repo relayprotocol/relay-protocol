@@ -22,8 +22,8 @@ export const abstract: L2NetworkConfig = {
   isZKsync: true,
   l1ChainId: 1,
   name: 'Abstract',
-  rpc: process.env.RPC_18231
-    ? [process.env.RPC_18231]
+  rpc: process.env.RPC_2741
+    ? [process.env.RPC_2741]
     : ['https://api.mainnet.abs.xyz'],
   slug: 'abstract',
   stack: 'zksync',

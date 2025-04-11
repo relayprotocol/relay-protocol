@@ -19,7 +19,7 @@ export const arbitrumNova: L2NetworkConfig = {
     },
   },
   chainId: 42170,
-  earliestBlock: 0,
+  earliestBlock: 83282400,
   hyperlaneMailbox: '0x3a867fCfFeC2B790970eeBDC9023E75B0a172aa7',
   isTestnet: false,
   l1ChainId: 1,
