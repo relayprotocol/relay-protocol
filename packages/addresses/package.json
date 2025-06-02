@@ -19,17 +19,17 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "graphql": "16.10.0",
-    "graphql-request": "7.1.2",
-    "tsx": "4.19.3"
+    "graphql": "16.11.0",
+    "graphql-request": "7.2.0",
+    "tsx": "4.19.4"
   },
   "devDependencies": {
     "@relay-protocol/eslint-config": "workspace:^",
     "@relay-protocol/tsconfig": "workspace:./packages/tsconfig",
     "@relay-protocol/types": "workspace:./packages/types",
-    "@types/node": "22.14.1",
-    "eslint": "9.25.1",
-    "tsup": "8.4.0",
+    "@types/node": "22.15.29",
+    "eslint": "9.28.0",
+    "tsup": "8.5.0",
     "typescript": "5.8.3"
   }
 }

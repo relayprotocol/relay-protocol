@@ -27,21 +27,21 @@
   },
   "dependencies": {
     "graphql": "16.11.0",
-    "graphql-request": "7.1.2",
+    "graphql-request": "7.2.0",
     "graphql-tag": "2.12.6"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "5.0.6",
     "@graphql-codegen/typescript": "4.1.6",
-    "@graphql-codegen/typescript-graphql-request": "6.2.0",
+    "@graphql-codegen/typescript-graphql-request": "6.3.0",
     "@graphql-codegen/typescript-operations": "4.6.1",
     "@relay-protocol/backend": "workspace:*",
     "@relay-protocol/eslint-config": "workspace:^",
     "@relay-protocol/tsconfig": "workspace:./packages/tsconfig",
     "@relay-protocol/types": "workspace:./packages/types",
-    "@types/node": "22.15.17",
-    "eslint": "9.26.0",
-    "tsup": "8.4.0",
+    "@types/node": "22.15.29",
+    "eslint": "9.28.0",
+    "tsup": "8.5.0",
     "typescript": "5.8.3"
   }
 }

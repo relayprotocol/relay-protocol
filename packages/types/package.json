@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@relay-protocol/tsconfig": "workspace:./packages/tsconfig",
-    "eslint": "9.25.1",
+    "eslint": "9.28.0",
     "typescript": "5.8.3"
   }
 }

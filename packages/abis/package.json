@@ -27,7 +27,7 @@
   "devDependencies": {
     "@relay-protocol/helpers": "^workspace:*",
     "@relay-protocol/networks": "1.1.1",
-    "tsup": "8.4.0",
+    "tsup": "8.5.0",
     "typescript": "5.8.3"
   },
   "files": [

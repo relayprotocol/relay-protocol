@@ -16,8 +16,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@bgd-labs/aave-address-book": "4.18.1",
-    "ethers": "6.13.5",
+    "@bgd-labs/aave-address-book": "4.22.0",
+    "ethers": "6.14.3",
     "zksync-ethers": "6.17.0"
   },
   "scripts": {
@@ -36,9 +36,9 @@
     "@types/copyfiles": "2",
     "@types/fs-extra": "11",
     "copyfiles": "2.4.1",
-    "eslint": "9.25.1",
+    "eslint": "9.28.0",
     "fs-extra": "11.3.0",
-    "tsup": "8.4.0",
+    "tsup": "8.5.0",
     "typescript": "5.8.3"
   }
 }
