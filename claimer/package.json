@@ -13,12 +13,12 @@
     "@relay-protocol/networks": "workspace:*",
     "@relay-protocol/tsconfig": "workspace:./packages/tsconfig",
     "@relay-protocol/types": "workspace:./packages/types",
-    "@types/node": "22.14.1",
-    "eslint": "9.25.1",
+    "@types/node": "22.15.29",
+    "eslint": "9.28.0",
     "typescript": "5.8.3"
   },
   "dependencies": {
-    "ethers": "6.13.5",
-    "tsx": "4.19.3"
+    "ethers": "6.14.3",
+    "tsx": "4.19.4"
   }
 }
