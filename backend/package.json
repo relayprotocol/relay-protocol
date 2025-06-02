@@ -18,23 +18,23 @@
   "dependencies": {
     "@relay-protocol/abis": "workspace:*",
     "@relay-protocol/addresses": "1.0.5",
-    "hono": "4.6.20",
-    "ponder": "0.10.23",
-    "viem": "2.22.19"
+    "hono": "4.7.11",
+    "ponder": "0.11.10",
+    "viem": "2.30.6"
   },
   "devDependencies": {
-    "@types/node": "22.13.0",
-    "@typescript-eslint/eslint-plugin": "8.23.0",
-    "@typescript-eslint/parser": "8.23.0",
-    "eslint": "9.19.0",
-    "eslint-config-ponder": "0.10.14",
-    "eslint-config-prettier": "10.0.1",
-    "eslint-plugin-prettier": "5.2.3",
+    "@types/node": "22.15.29",
+    "@typescript-eslint/eslint-plugin": "8.33.1",
+    "@typescript-eslint/parser": "8.33.1",
+    "eslint": "9.28.0",
+    "eslint-config-ponder": "0.11.10",
+    "eslint-config-prettier": "10.1.5",
+    "eslint-plugin-prettier": "5.4.1",
     "husky": "9.1.7",
     "jsonc-eslint-parser": "2.4.0",
-    "lint-staged": "15.4.3",
-    "prettier": "3.4.2",
-    "typescript": "5.7.3"
+    "lint-staged": "16.1.0",
+    "prettier": "3.5.3",
+    "typescript": "5.8.3"
   },
   "lint-staged": {
     "*.{js,ts}": [
