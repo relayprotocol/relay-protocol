@@ -31,7 +31,7 @@
     "@nomicfoundation/hardhat-ignition-ethers": "0.15.12",
     "@nomicfoundation/hardhat-network-helpers": "1.0.12",
     "@nomicfoundation/hardhat-toolbox": "5.0.0",
-    "@nomicfoundation/hardhat-verify": "2.0.12",
+    "@nomicfoundation/hardhat-verify": "2.0.14",
     "@relay-protocol/helpers": "workspace:*",
     "@typechain/ethers-v6": "0.5.1",
     "@typechain/hardhat": "9.1.0",
