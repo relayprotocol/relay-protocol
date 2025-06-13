@@ -66,7 +66,7 @@
   "dependencies": {
     "@bgd-labs/aave-address-book": "4.22.2",
     "@eth-optimism/contracts-bedrock": "0.17.3",
-    "@hyperlane-xyz/registry": "13.16.1",
+    "@hyperlane-xyz/registry": "17.7.0",
     "@matterlabs/hardhat-zksync": "1.6.0",
     "@matterlabs/hardhat-zksync-deploy": "1.7.0",
     "@openzeppelin/contracts": "5.3.0",
