@@ -6,26 +6,39 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
-error EthTransferFailed();
-error OnlyWethCanSendEth();
-error RemainingEth();
-error SlippageExceeded();
-
+/// @title RelayPoolNativeGateway
+/// @author Relay Protocol
+/// @notice Gateway contract for depositing and withdrawing native ETH to/from WETH-based RelayPools
+/// @dev Handles wrapping/unwrapping of ETH and provides slippage protection for all operations
 contract RelayPoolNativeGateway {
+  /// @notice Error when ETH transfer fails
+  error EthTransferFailed();
+
+  /// @notice Error when contract receives ETH from non-WETH address
+  error OnlyWethCanSendEth();
+
+  /// @notice Error when ETH remains in contract after operation
+  error RemainingEth();
+
+  /// @notice Error when slippage protection is triggered
+  error SlippageExceeded();
+
+  /// @notice The Wrapped ETH (WETH) contract
+  /// @dev Used to wrap/unwrap native ETH for pool operations
   IWETH public immutable WETH;
 
-  /**
-   * @param wethAddress address on Wrapped Native contract
-   */
+  /// @notice Initializes the gateway with the WETH contract address
+  /// @param wethAddress Address of the Wrapped Native token contract
   constructor(address wethAddress) {
     WETH = IWETH(wethAddress);
   }
 
-  /**
-   * @dev deposit native tokens to the WETH _reserves of msg.sender
-   * @param receiver the reserve account to be credited
-   * @param minSharesOut minimum amount of shares to receive
-   */
+  /// @notice Deposits native ETH into a WETH-based pool
+  /// @dev Wraps ETH to WETH, then deposits to the pool with slippage protection
+  /// @param pool The address of the ERC4626 pool to deposit into
+  /// @param receiver The address that will receive the pool shares
+  /// @param minSharesOut Minimum amount of shares to receive (slippage protection)
+  /// @return shares The amount of pool shares minted to the receiver
   function deposit(
     address pool,
     address receiver,
@@ -44,11 +57,12 @@ contract RelayPoolNativeGateway {
     }
   }
 
-  /**
-   * @dev deposit native tokens to the WETH _reserves of msg.sender
-   * @param receiver the reserve account to be credited
-   * @param minSharesOut minimum amount of shares to receive
-   */
+  /// @notice Mints pool shares by depositing native ETH
+  /// @dev Wraps ETH, calculates shares, then mints with slippage protection
+  /// @param pool The address of the ERC4626 pool to mint shares from
+  /// @param receiver The address that will receive the pool shares
+  /// @param minSharesOut Minimum amount of shares to receive (slippage protection)
+  /// @return shares The amount of pool shares minted to the receiver
   function mint(
     address pool,
     address receiver,
@@ -69,12 +83,13 @@ contract RelayPoolNativeGateway {
     IERC4626(pool).mint(shares, receiver);
   }
 
-  /**
-   * @dev withraw native tokens from the WETH reserves of msg.sender
-   * @param assets amount of native tokens
-   * @param receiver the reserve account to be credited
-   * @param maxSharesIn maximum amount of shares to burn
-   */
+  /// @notice Withdraws a specific amount of native ETH from a WETH-based pool
+  /// @dev Withdraws WETH from pool, unwraps to ETH, with slippage protection
+  /// @param pool The address of the ERC4626 pool to withdraw from
+  /// @param assets Amount of native ETH to withdraw
+  /// @param receiver The address that will receive the native ETH
+  /// @param maxSharesIn Maximum amount of shares to burn (slippage protection)
+  /// @return shares The amount of pool shares burned
   function withdraw(
     address pool,
     uint256 assets,
@@ -93,7 +108,7 @@ contract RelayPoolNativeGateway {
 
     // withdraw native tokens and send them back
     WETH.withdraw(assets);
-    _safeTransferETH(receiver, assets);
+    safeTransferETH(receiver, assets);
 
     // make sure no ETH is left in the contract
     if (address(this).balance - balanceBefore > 0) {
@@ -101,12 +116,13 @@ contract RelayPoolNativeGateway {
     }
   }
 
-  /**
-   * @dev redeem native tokens
-   * @param shares amount of native tokens
-   * @param receiver the reserve account to be credited
-   * @param minAssetsOut minimum amount of assets to receive
-   */
+  /// @notice Redeems pool shares for native ETH
+  /// @dev Redeems shares for WETH, unwraps to ETH, with slippage protection
+  /// @param pool The address of the ERC4626 pool to redeem from
+  /// @param shares Amount of pool shares to redeem
+  /// @param receiver The address that will receive the native ETH
+  /// @param minAssetsOut Minimum amount of ETH to receive (slippage protection)
+  /// @return assets The amount of native ETH sent to receiver
   function redeem(
     address pool,
     uint256 shares,
@@ -124,7 +140,7 @@ contract RelayPoolNativeGateway {
 
     // withdraw native tokens and send them back
     WETH.withdraw(assets);
-    _safeTransferETH(receiver, assets);
+    safeTransferETH(receiver, assets);
 
     // make sure no ETH is left in the contract
     if (address(this).balance - balanceBefore > 0) {
@@ -132,18 +148,19 @@ contract RelayPoolNativeGateway {
     }
   }
 
-  /**
-   * @dev transfer ETH to an address, revert if it fails.
-   * @param to recipient of the transfer
-   * @param value the amount to send
-   */
-  function _safeTransferETH(address to, uint256 value) internal {
+  /// @notice Safely transfers ETH to an address
+  /// @dev Reverts if the ETH transfer fails
+  /// @param to Recipient of the ETH transfer
+  /// @param value Amount of ETH to transfer
+  function safeTransferETH(address to, uint256 value) internal {
     (bool success, ) = to.call{value: value}(new bytes(0));
     if (!success) {
       revert EthTransferFailed();
     }
   }
 
+  /// @notice Receives ETH only from WETH contract
+  /// @dev Required for WETH unwrapping operations
   receive() external payable {
     if (msg.sender != address(WETH)) {
       revert OnlyWethCanSendEth();

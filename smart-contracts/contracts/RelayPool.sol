@@ -13,90 +13,177 @@ import {HyperlaneMessage} from "./Types.sol";
 import {IBridgeProxy} from "./interfaces/IBridgeProxy.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-struct OriginSettings {
-  uint32 chainId;
-  address bridge;
-  address curator;
-  uint256 maxDebt;
-  uint256 outstandingDebt;
-  address proxyBridge;
-  uint32 bridgeFee; // fractional basis points
-  uint32 coolDown; // in seconds
-}
-
-struct OriginParam {
-  address curator;
-  uint32 chainId;
-  address bridge;
-  address proxyBridge;
-  uint256 maxDebt;
-  uint32 bridgeFee; // fractional basis points
-  uint32 coolDown; // in seconds
-}
-
-error UnauthorizedCaller(address sender);
-error UnauthorizedSwap(address token);
-error UnauthorizedOrigin(uint32 chainId, address bridge);
-error MessageAlreadyProcessed(uint32 chainId, address bridge, uint256 nonce);
-error TooMuchDebtFromOrigin(
-  uint32 chainId,
-  address bridge,
-  uint256 maxDebt,
-  uint256 nonce,
-  address recipient,
-  uint256 amount
-);
-error FailedTransfer(address recipient, uint256 amount);
-error InsufficientFunds(uint256 amount, uint256 balance);
-
-error NotAWethPool();
-error MessageTooRecent(
-  uint32 chainId,
-  address bridge,
-  uint256 nonce,
-  uint256 timestamp,
-  uint32 coolDown
-);
-
-error SharePriceTooLow(uint256 actualPrice, uint256 minPrice);
-error SharePriceTooHigh(uint256 actualPrice, uint256 maxPrice);
-
+/// @title RelayPool
+/// @author Relay Protocol
+/// @notice ERC4626 vault that enables cross-chain asset bridging and yield generation
+/// @dev Receives bridged assets via Hyperlane, provides instant liquidity, and deposits idle funds into yield pools
 contract RelayPool is ERC4626, Ownable {
-  // The address of the Hyperlane mailbox
+  /// @notice Configuration for an authorized origin chain and bridge
+  /// @param chainId The chain ID of the origin chain
+  /// @param bridge The address of the bridge contract on the origin chain
+  /// @param curator The address authorized to disable this origin
+  /// @param maxDebt Maximum outstanding debt allowed from this origin
+  /// @param outstandingDebt Current outstanding debt from this origin
+  /// @param proxyBridge The address of the proxy bridge contract for claiming funds
+  /// @param bridgeFee Fee charged for bridging (in fractional basis points)
+  /// @param coolDown Minimum time in seconds between message timestamp and processing
+  struct OriginSettings {
+    uint32 chainId;
+    address bridge;
+    address curator;
+    uint256 maxDebt;
+    uint256 outstandingDebt;
+    address proxyBridge;
+    uint32 bridgeFee; // fractional basis points
+    uint32 coolDown; // in seconds
+  }
+
+  /// @notice Parameters for adding a new origin
+  /// @param curator The address authorized to disable this origin
+  /// @param chainId The chain ID of the origin chain
+  /// @param bridge The address of the bridge contract on the origin chain
+  /// @param proxyBridge The address of the proxy bridge contract for claiming funds
+  /// @param maxDebt Maximum outstanding debt allowed from this origin
+  /// @param bridgeFee Fee charged for bridging (in fractional basis points)
+  /// @param coolDown Minimum time in seconds between message timestamp and processing
+  struct OriginParam {
+    address curator;
+    uint32 chainId;
+    address bridge;
+    address proxyBridge;
+    uint256 maxDebt;
+    uint32 bridgeFee; // fractional basis points
+    uint32 coolDown; // in seconds
+  }
+
+  /// @notice Error when caller is not authorized for the operation
+  /// @param sender The address that attempted the unauthorized call
+  error UnauthorizedCaller(address sender);
+
+  /// @notice Error when attempting to swap the pool's underlying asset
+  /// @param token The token address that was attempted to be swapped
+  error UnauthorizedSwap(address token);
+
+  /// @notice Error when message is from an unauthorized origin
+  /// @param chainId The chain ID of the unauthorized origin
+  /// @param bridge The bridge address of the unauthorized origin
+  error UnauthorizedOrigin(uint32 chainId, address bridge);
+
+  /// @notice Error when attempting to process an already processed message
+  /// @param chainId The chain ID of the message origin
+  /// @param bridge The bridge address of the message origin
+  /// @param nonce The nonce of the already processed message
+  error MessageAlreadyProcessed(uint32 chainId, address bridge, uint256 nonce);
+
+  /// @notice Error when origin would exceed its maximum allowed debt
+  /// @param chainId The chain ID of the origin
+  /// @param bridge The bridge address of the origin
+  /// @param maxDebt The maximum allowed debt for this origin
+  /// @param nonce The nonce of the rejected transaction
+  /// @param recipient The intended recipient of the funds
+  /// @param amount The amount that would exceed the debt limit
+  error TooMuchDebtFromOrigin(
+    uint32 chainId,
+    address bridge,
+    uint256 maxDebt,
+    uint256 nonce,
+    address recipient,
+    uint256 amount
+  );
+
+  /// @notice Error when native currency transfer fails
+  /// @param recipient The intended recipient of the transfer
+  /// @param amount The amount that failed to transfer
+  error FailedTransfer(address recipient, uint256 amount);
+
+  /// @notice Error when insufficient funds are available
+  /// @param amount The amount available
+  /// @param balance The balance required
+  error InsufficientFunds(uint256 amount, uint256 balance);
+
+  /// @notice Error when native currency is sent to a non-WETH pool
+  error NotAWethPool();
+
+  /// @notice Error when message timestamp is too recent based on cooldown period
+  /// @param chainId The chain ID of the message origin
+  /// @param bridge The bridge address of the message origin
+  /// @param nonce The nonce of the message
+  /// @param timestamp The timestamp of the message
+  /// @param coolDown The required cooldown period
+  error MessageTooRecent(
+    uint32 chainId,
+    address bridge,
+    uint256 nonce,
+    uint256 timestamp,
+    uint32 coolDown
+  );
+
+  /// @notice Error when share price is below minimum acceptable threshold
+  /// @param actualPrice The actual share price
+  /// @param minPrice The minimum acceptable share price
+  error SharePriceTooLow(uint256 actualPrice, uint256 minPrice);
+
+  /// @notice Error when share price is above maximum acceptable threshold
+  /// @param actualPrice The actual share price
+  /// @param maxPrice The maximum acceptable share price
+  error SharePriceTooHigh(uint256 actualPrice, uint256 maxPrice);
+
+  /// @notice The address of the Hyperlane mailbox
+  /// @dev Used to receive cross-chain messages
   address public immutable HYPERLANE_MAILBOX;
 
-  // The address of the weth contract (used for native pools)
+  /// @notice The address of the WETH contract (used for native pools)
+  /// @dev Set to WETH address for native currency pools, otherwise can be address(0)
   address public immutable WETH;
-  
-  // Denominator for fractional basis points calculations (1 = 0.0000001 bps)
+
+  /// @notice Denominator for fractional basis points calculations (1 = 0.0000001 bps)
   uint256 public constant FRACTIONAL_BPS_DENOMINATOR = 100_000_000_000;
 
-  // Keeping track of the outstanding debt for ERC4626 computations
+  /// @notice Keeping track of the outstanding debt for ERC4626 computations
+  /// @dev Represents funds that have been sent but not yet claimed from bridges
   uint256 public outstandingDebt = 0;
 
-  // Mapping of origins to their settings
+  /// @notice Mapping of origins to their settings
+  /// @dev [chainId][bridgeAddress] => OriginSettings
   mapping(uint32 => mapping(address => OriginSettings))
     public authorizedOrigins;
 
-  // Mapping of messages by origin
+  /// @notice Mapping of messages by origin
+  /// @dev [chainId][bridgeAddress][nonce] => message data
   mapping(uint32 => mapping(address => mapping(uint256 => bytes)))
     public messages;
 
-  // The address of the yield pool where funds are deposited
+  /// @notice The address of the yield pool where funds are deposited
+  /// @dev Must be an ERC4626 vault for the same underlying asset
   address public yieldPool;
 
-  // unswap wrapper contract
+  /// @notice UniswapV3 wrapper contract for token swaps
   address public tokenSwapAddress;
 
-  // Keeping track of the total fees collected
+  /// @notice Keeping track of the total fees collected
+  /// @dev Fees are held in the yield pool until they finish streaming
   uint256 public pendingBridgeFees = 0;
 
-  // All incoming assets are streamed (even though they are instantly deposited in the yield pool)
+  /// @notice All incoming assets are streamed (even though they are instantly deposited in the yield pool)
+  /// @dev Total amount of assets currently being streamed
   uint256 public totalAssetsToStream = 0;
+
+  /// @notice Timestamp when assets were last collected for streaming
   uint256 public lastAssetsCollectedAt = 0;
+
+  /// @notice Timestamp when current streaming period ends
   uint256 public endOfStream = block.timestamp;
+
+  /// @notice Duration over which collected assets are streamed
   uint256 public streamingPeriod = 7 days;
 
+  /// @notice Emitted when a loan is provided to a bridge recipient
+  /// @param nonce The unique identifier of the transaction
+  /// @param recipient The address receiving the funds
+  /// @param asset The asset being transferred
+  /// @param amount The total amount including fees
+  /// @param origin The origin settings for this bridge
+  /// @param fees The fee amount collected
   event LoanEmitted(
     uint256 indexed nonce,
     address indexed recipient,
@@ -106,6 +193,11 @@ contract RelayPool is ERC4626, Ownable {
     uint256 fees
   );
 
+  /// @notice Emitted when bridged funds are claimed and deposited
+  /// @param chainId The chain ID of the bridge origin
+  /// @param bridge The bridge address on the origin chain
+  /// @param amount The total amount claimed
+  /// @param fees The fee amount collected
   event BridgeCompleted(
     uint32 chainId,
     address indexed bridge,
@@ -113,6 +205,12 @@ contract RelayPool is ERC4626, Ownable {
     uint256 fees
   );
 
+  /// @notice Emitted when outstanding debt changes
+  /// @param oldDebt Previous total outstanding debt
+  /// @param newDebt New total outstanding debt
+  /// @param origin The origin settings involved
+  /// @param oldOriginDebt Previous outstanding debt for the origin
+  /// @param newOriginDebt New outstanding debt for the origin
   event OutstandingDebtChanged(
     uint256 oldDebt,
     uint256 newDebt,
@@ -121,14 +219,41 @@ contract RelayPool is ERC4626, Ownable {
     uint256 newOriginDebt
   );
 
+  /// @notice Emitted when assets are deposited into the yield pool
+  /// @param amount The amount deposited
+  /// @param yieldPool The yield pool address
   event AssetsDepositedIntoYieldPool(uint256 amount, address yieldPool);
+
+  /// @notice Emitted when assets are withdrawn from the yield pool
+  /// @param amount The amount withdrawn
+  /// @param yieldPool The yield pool address
   event AssetsWithdrawnFromYieldPool(uint256 amount, address yieldPool);
+
+  /// @notice Emitted when the token swap address is changed
+  /// @param prevAddress The previous swap contract address
+  /// @param newAddress The new swap contract address
   event TokenSwapChanged(address prevAddress, address newAddress);
 
+  /// @notice Emitted when the yield pool is changed
+  /// @param oldPool The previous yield pool address
+  /// @param newPool The new yield pool address
   event YieldPoolChanged(address oldPool, address newPool);
+
+  /// @notice Emitted when the streaming period is changed
+  /// @param oldPeriod The previous streaming period
+  /// @param newPeriod The new streaming period
   event StreamingPeriodChanged(uint256 oldPeriod, uint256 newPeriod);
 
+  /// @notice Emitted when a new origin is added
+  /// @param origin The origin parameters
   event OriginAdded(OriginParam origin);
+
+  /// @notice Emitted when an origin is disabled
+  /// @param chainId The chain ID of the disabled origin
+  /// @param bridge The bridge address of the disabled origin
+  /// @param maxDebt The previous maximum debt limit
+  /// @param outstandingDebt The outstanding debt at time of disabling
+  /// @param proxyBridge The proxy bridge address
   event OriginDisabled(
     uint32 chainId,
     address bridge,
@@ -137,33 +262,40 @@ contract RelayPool is ERC4626, Ownable {
     address proxyBridge
   );
 
-  // Warning: the owner of the pool should always be a timelock address
-  // with a significant delay to reduce the risk of stolen funds.
-  // The delay should also be longer than the slowest bridge so that an malicious
-  // curator is not able to steal funds that are "in transit" without an opportunity
-  // for the recipient to withdraw them.
+  /// @notice Initializes the RelayPool with core parameters
+  /// @dev Warning: the owner should always be a timelock with significant delay
+  /// @param hyperlaneMailbox The Hyperlane mailbox contract address
+  /// @param asset The underlying asset for this vault
+  /// @param name The name of the vault token
+  /// @param symbol The symbol of the vault token
+  /// @param baseYieldPool The initial yield pool for depositing assets
+  /// @param weth The WETH contract address (for native currency pools)
+  /// @param curator The address that will own the pool after deployment
   constructor(
     address hyperlaneMailbox,
     ERC20 asset,
     string memory name,
     string memory symbol,
-    address _yieldPool,
-    address _weth,
-    address _curator
+    address baseYieldPool,
+    address weth,
+    address curator
   ) ERC4626(asset, name, symbol) Ownable(msg.sender) {
     // Set the Hyperlane mailbox
     HYPERLANE_MAILBOX = hyperlaneMailbox;
 
     // set the yieldPool
-    yieldPool = _yieldPool;
+    yieldPool = baseYieldPool;
 
     // set weth
-    WETH = _weth;
+    WETH = weth;
 
     // Change the owner to the curator
-    transferOwnership(_curator);
+    transferOwnership(curator);
   }
 
+  /// @notice Updates the streaming period for fee accrual
+  /// @dev Updates streamed assets before changing the period
+  /// @param newPeriod The new streaming period in seconds
   function updateStreamingPeriod(uint256 newPeriod) public onlyOwner {
     updateStreamedAssets();
     uint256 oldPeriod = streamingPeriod;
@@ -171,13 +303,11 @@ contract RelayPool is ERC4626, Ownable {
     emit StreamingPeriodChanged(oldPeriod, newPeriod);
   }
 
-  /**
-   * @notice Updates the yield pool, moving all assets from the old pool to the new one
-   * @param newPool The address of the new yield pool
-   * @param minSharePriceFromOldPool The minimum acceptable share price when withdrawing from the old pool
-   * @param maxSharePricePriceFromNewPool The maximum acceptable share price when depositing into the new pool
-   * @dev This function implements share price-based slippage protection to ensure fair value transfer between pools
-   */
+  /// @notice Updates the yield pool, moving all assets from the old pool to the new one
+  /// @dev Implements share price-based slippage protection to ensure fair value transfer
+  /// @param newPool The address of the new yield pool
+  /// @param minSharePriceFromOldPool The minimum acceptable share price when withdrawing from the old pool
+  /// @param maxSharePricePriceFromNewPool The maximum acceptable share price when depositing into the new pool
   function updateYieldPool(
     address newPool,
     uint256 minSharePriceFromOldPool,
@@ -187,7 +317,9 @@ contract RelayPool is ERC4626, Ownable {
     uint256 sharesOfOldPool = ERC20(yieldPool).balanceOf(address(this));
 
     // Calculate share price of old pool using convertToAssets
-    uint256 oldPoolSharePrice = ERC4626(oldPool).convertToAssets(10 ** ERC20(oldPool).decimals());
+    uint256 oldPoolSharePrice = ERC4626(oldPool).convertToAssets(
+      10 ** ERC20(oldPool).decimals()
+    );
 
     // Check if share price is too low
     if (oldPoolSharePrice < minSharePriceFromOldPool) {
@@ -203,7 +335,9 @@ contract RelayPool is ERC4626, Ownable {
     yieldPool = newPool;
 
     // Calculate share price of new pool using convertToAssets
-    uint256 newPoolSharePrice = ERC4626(newPool).convertToAssets(10 ** ERC20(newPool).decimals());
+    uint256 newPoolSharePrice = ERC4626(newPool).convertToAssets(
+      10 ** ERC20(newPool).decimals()
+    );
 
     // Check if share price is too high
     if (newPoolSharePrice > maxSharePricePriceFromNewPool) {
@@ -219,11 +353,14 @@ contract RelayPool is ERC4626, Ownable {
       newPool,
       withdrawnAssets
     );
-    _depositAssetsInYieldPool(withdrawnAssets);
+    depositAssetsInYieldPool(withdrawnAssets);
 
     emit YieldPoolChanged(oldPool, newPool);
   }
 
+  /// @notice Adds a new authorized origin for bridging
+  /// @dev Only callable by owner, typically a timelock contract
+  /// @param origin The origin parameters including chain ID, addresses, and limits
   function addOrigin(OriginParam memory origin) public onlyOwner {
     authorizedOrigins[origin.chainId][origin.bridge] = OriginSettings({
       chainId: origin.chainId,
@@ -238,8 +375,10 @@ contract RelayPool is ERC4626, Ownable {
     emit OriginAdded(origin);
   }
 
-  // We cannot completely remove an origin, because the funds might still be in transit...
-  // But we can "block" new funds from being sent
+  /// @notice Disables an origin by setting its max debt to zero
+  /// @dev Only callable by the origin's curator for emergency response
+  /// @param chainId The chain ID of the origin to disable
+  /// @param bridge The bridge address of the origin to disable
   function disableOrigin(uint32 chainId, address bridge) public {
     OriginSettings memory origin = authorizedOrigins[chainId][bridge];
     if (msg.sender != origin.curator) {
@@ -255,7 +394,11 @@ contract RelayPool is ERC4626, Ownable {
     );
   }
 
-  function _increaseOutstandingDebt(
+  /// @notice Increases outstanding debt for an origin
+  /// @dev Updates both origin-specific and total outstanding debt
+  /// @param amount The amount to increase debt by
+  /// @param origin The origin settings to update
+  function increaseOutstandingDebt(
     uint256 amount,
     OriginSettings storage origin
   ) internal {
@@ -272,7 +415,11 @@ contract RelayPool is ERC4626, Ownable {
     );
   }
 
-  function _decreaseOutstandingDebt(
+  /// @notice Decreases outstanding debt for an origin
+  /// @dev Updates both origin-specific and total outstanding debt
+  /// @param amount The amount to decrease debt by
+  /// @param origin The origin settings to update
+  function decreaseOutstandingDebt(
     uint256 amount,
     OriginSettings storage origin
   ) internal {
@@ -289,22 +436,30 @@ contract RelayPool is ERC4626, Ownable {
     );
   }
 
-  // We cap the maxDeposit of any receiver to the maxDeposit of the yield pool for us
+  /// @notice Returns the maximum assets that can be deposited
+  /// @dev Limited by the yield pool's capacity
+  /// @param /* receiver */ The address that would receive shares (unused)
+  /// @return maxAssets The maximum amount of assets that can be deposited
   function maxDeposit(
     address /* receiver */
   ) public view override returns (uint256 maxAssets) {
     return ERC4626(yieldPool).maxDeposit(address(this));
   }
 
-  // We cap the maxWithdraw of any owner to the maxWithdraw of the yield pool for us
+  /// @notice Returns the maximum assets that can be withdrawn by an owner
+  /// @dev Limited to the owner's share balance converted to assets
+  /// @param owner The address to check withdrawal capacity for
+  /// @return maxAssets The maximum amount of assets that can be withdrawn
   function maxWithdraw(
     address owner
   ) public view override returns (uint256 maxAssets) {
     return convertToAssets(this.balanceOf(owner));
   }
 
-  // We cap the maxMint of any receiver to the number of our shares corresponding to the
-  // maxDeposit of the yield pool for us
+  /// @notice Returns the maximum shares that can be minted
+  /// @dev Limited by the yield pool's deposit capacity
+  /// @param receiver The address that would receive the shares
+  /// @return maxShares The maximum amount of shares that can be minted
   function maxMint(
     address receiver
   ) public view override returns (uint256 maxShares) {
@@ -312,7 +467,10 @@ contract RelayPool is ERC4626, Ownable {
     return ERC4626.previewDeposit(maxDepositInYieldPool);
   }
 
-  // We cap the maxRedeem of any owner to the maxRedeem of the yield pool for us
+  /// @notice Returns the maximum shares that can be redeemed by an owner
+  /// @dev Limited by the owner's share balance and yield pool's withdrawal capacity
+  /// @param owner The address to check redemption capacity for
+  /// @return maxShares The maximum amount of shares that can be redeemed
   function maxRedeem(
     address owner
   ) public view override returns (uint256 maxShares) {
@@ -320,16 +478,9 @@ contract RelayPool is ERC4626, Ownable {
     return ERC4626.previewWithdraw(maxWithdrawInYieldPool);
   }
 
-  // This function returns the total assets "controlled" by the pool
-  // This is the sum of
-  // - the assets that would be resulting from withdrawing all the shares held by this pool into
-  //   the yield pool
-  // - the assets "in transit" to the pool (i.e. the outstanding debt)
-  // - the bridging fees that have accrued so far (streaming)
-  // WARNING: a previous version of this function took the token balance into account.
-  //          This creates a vulnerability where a 3rd party can inflate the share price by
-  //          depositing tokens into the pool and then use these tokens as collateral.
-  //          See https://mudit.blog/cream-hack-analysis/
+  /// @notice Returns the total assets controlled by the pool
+  /// @dev Includes yield pool balance, outstanding debt, minus pending fees and streaming assets
+  /// @return The total assets under management
   function totalAssets() public view override returns (uint256) {
     uint256 balanceOfYieldPoolTokens = ERC20(yieldPool).balanceOf(
       address(this)
@@ -347,22 +498,20 @@ contract RelayPool is ERC4626, Ownable {
       remainsToStream();
   }
 
-  // Helper function
-  // We deposit assets to the yield pool.
-  // This function is internal
-  // Note: a previous version used the full balance of assets.
-  //       This creates a vulnerability where a 3rd party can inflate
-  //       the share price and use that to capture the value created.
-  function _depositAssetsInYieldPool(uint256 amount) internal {
+  /// @notice Deposits assets into the yield pool
+  /// @dev Internal function that approves and deposits to yield pool
+  /// @param amount The amount of assets to deposit
+  function depositAssetsInYieldPool(uint256 amount) internal {
     SafeERC20.safeIncreaseAllowance(IERC20(address(asset)), yieldPool, amount);
     ERC4626(yieldPool).deposit(amount, address(this));
     emit AssetsDepositedIntoYieldPool(amount, yieldPool);
   }
 
-  // Helper function
-  // We withdraw only the required amount.
-  // This function is internal for obvious reasons!
-  function _withdrawAssetsFromYieldPool(
+  /// @notice Withdraws assets from the yield pool
+  /// @dev Internal function that withdraws from yield pool to recipient
+  /// @param amount The amount of assets to withdraw
+  /// @param recipient The address to receive the withdrawn assets
+  function withdrawAssetsFromYieldPool(
     uint256 amount,
     address recipient
   ) internal {
@@ -370,10 +519,11 @@ contract RelayPool is ERC4626, Ownable {
     emit AssetsWithdrawnFromYieldPool(amount, yieldPool);
   }
 
-  // Function called by Hyperlane
-  // We need to instantly send funds to the user
-  // BUT we need to make sure we do not change the underlying balance of assets,
-  // because the funds will eventually arrive.
+  /// @notice Handles incoming cross-chain messages from Hyperlane
+  /// @dev Only callable by Hyperlane mailbox, provides instant liquidity to recipients
+  /// @param chainId The origin chain ID
+  /// @param bridgeAddress The origin bridge address (as bytes32)
+  /// @param data The encoded message data
   function handle(
     uint32 chainId,
     bytes32 bridgeAddress,
@@ -415,7 +565,8 @@ contract RelayPool is ERC4626, Ownable {
     messages[chainId][bridge][message.nonce] = data;
 
     // Calculate fee using fractional basis points
-    uint256 feeAmount = (message.amount * origin.bridgeFee) / FRACTIONAL_BPS_DENOMINATOR;
+    uint256 feeAmount = (message.amount * origin.bridgeFee) /
+      FRACTIONAL_BPS_DENOMINATOR;
     pendingBridgeFees += feeAmount;
 
     // Check if origin settings are respected
@@ -431,10 +582,10 @@ contract RelayPool is ERC4626, Ownable {
         message.amount
       );
     }
-    _increaseOutstandingDebt(message.amount, origin);
+    increaseOutstandingDebt(message.amount, origin);
 
     // We only send the amount net of fees
-    _sendFunds(message.amount - feeAmount, message.recipient);
+    sendFunds(message.amount - feeAmount, message.recipient);
 
     emit LoanEmitted(
       message.nonce,
@@ -446,9 +597,9 @@ contract RelayPool is ERC4626, Ownable {
     );
   }
 
-  // Compute the streaming fees
-  // If the last fee collection was more than end of the stream, we have nothing left to stream
-  // Otherwise, we return the time-based pro-rata of what remains to stream.
+  /// @notice Calculates remaining assets to be streamed
+  /// @dev Returns zero if streaming period has ended
+  /// @return The amount of assets remaining to be streamed
   function remainsToStream() internal view returns (uint256) {
     if (block.timestamp > endOfStream) {
       return 0; // Nothing left to stream
@@ -460,15 +611,20 @@ contract RelayPool is ERC4626, Ownable {
     }
   }
 
-  // Updates the streamed fees and returns the new value
+  /// @notice Updates the streamed assets calculation
+  /// @dev Resets the streaming calculation to current timestamp
+  /// @return The new total assets to stream
   function updateStreamedAssets() public returns (uint256) {
     totalAssetsToStream = remainsToStream();
     lastAssetsCollectedAt = block.timestamp;
     return totalAssetsToStream;
   }
 
-  // Internal function to add assets to be accounted in a streaming fashgion
-  function _addToStreamingAssets(uint256 amount) internal returns (uint256) {
+  /// @notice Adds assets to be accounted for in a streaming fashion
+  /// @dev Adjusts streaming end time based on weighted average
+  /// @param amount The amount of assets to add to streaming
+  /// @return The new total assets to stream
+  function addToStreamingAssets(uint256 amount) internal returns (uint256) {
     if (amount > 0) {
       updateStreamedAssets();
       // We adjust the end of the stream based on the new amount
@@ -484,8 +640,11 @@ contract RelayPool is ERC4626, Ownable {
     return totalAssetsToStream += amount;
   }
 
-  // This function is called externally to claim funds from a bridge.
-  // The funds are immediately added to the yieldPool
+  /// @notice Claims funds from a bridge after they arrive
+  /// @dev Decreases outstanding debt and deposits funds into yield pool
+  /// @param chainId The origin chain ID
+  /// @param bridge The origin bridge address
+  /// @return amount The amount of assets claimed
   function claim(
     uint32 chainId,
     address bridge
@@ -502,43 +661,54 @@ contract RelayPool is ERC4626, Ownable {
     );
 
     // We should have received funds
-    _decreaseOutstandingDebt(amount, origin);
+    decreaseOutstandingDebt(amount, origin);
     // and we should deposit these funds into the yield pool
-    _depositAssetsInYieldPool(amount);
+    depositAssetsInYieldPool(amount);
 
     // The amount is the amount that was loaned + the fees
-    uint256 feeAmount = (amount * origin.bridgeFee) / FRACTIONAL_BPS_DENOMINATOR;
+    uint256 feeAmount = (amount * origin.bridgeFee) /
+      FRACTIONAL_BPS_DENOMINATOR;
     pendingBridgeFees -= feeAmount;
     // We need to account for it in a streaming fashion
-    _addToStreamingAssets(feeAmount);
+    addToStreamingAssets(feeAmount);
 
     emit BridgeCompleted(chainId, bridge, amount, feeAmount);
   }
 
-  // Internal function to send funds to a recipient,
-  // based on whether this is an ERC20 or native ETH.
-  function _sendFunds(uint256 amount, address recipient) internal {
+  /// @notice Sends funds to a recipient
+  /// @dev Handles both ERC20 and native currency transfers
+  /// @param amount The amount to send
+  /// @param recipient The address to receive the funds
+  function sendFunds(uint256 amount, address recipient) internal {
     if (address(asset) == WETH) {
-      _withdrawAssetsFromYieldPool(amount, address(this));
+      withdrawAssetsFromYieldPool(amount, address(this));
       IWETH(WETH).withdraw(amount);
       (bool success, ) = recipient.call{value: amount}("");
       if (!success) {
         revert FailedTransfer(recipient, amount);
       }
     } else {
-      _withdrawAssetsFromYieldPool(amount, recipient);
+      withdrawAssetsFromYieldPool(amount, recipient);
     }
   }
 
-  /**
-   * Set the Swap and Deposit contract address
-   */
-  function setTokenSwap(address _tokenSwapAddress) external onlyOwner {
+  /// @notice Sets the token swap contract address
+  /// @dev Used for swapping non-asset tokens received by the pool
+  /// @param newTokenSwapAddress The new token swap contract address
+  function setTokenSwap(address newTokenSwapAddress) external onlyOwner {
     address prevTokenSwapAddress = tokenSwapAddress;
-    tokenSwapAddress = _tokenSwapAddress;
+    tokenSwapAddress = newTokenSwapAddress;
     emit TokenSwapChanged(prevTokenSwapAddress, tokenSwapAddress);
   }
 
+  /// @notice Swaps tokens and deposits resulting assets
+  /// @dev Swaps via Uniswap V3 through the token swap contract
+  /// @param token The token to swap from
+  /// @param amount The amount of tokens to swap
+  /// @param uniswapWethPoolFeeToken The fee tier for token-WETH pool
+  /// @param uniswapWethPoolFeeAsset The fee tier for WETH-asset pool
+  /// @param deadline The deadline for the swap
+  /// @param amountOutMinimum The minimum amount of assets to receive
   function swapAndDeposit(
     address token,
     uint256 amount,
@@ -563,39 +733,45 @@ contract RelayPool is ERC4626, Ownable {
     collectNonDepositedAssets();
   }
 
-  // This function is called by anyone to collect assets and start streaming them
-  // to avoid timely attacks.
+  /// @notice Collects any assets not yet deposited and starts streaming them
+  /// @dev Can be called by anyone to ensure timely asset collection
   function collectNonDepositedAssets() public {
     uint256 balance = ERC20(asset).balanceOf(address(this));
     if (balance > 0) {
-      _depositAssetsInYieldPool(balance);
-      _addToStreamingAssets(balance);
+      depositAssetsInYieldPool(balance);
+      addToStreamingAssets(balance);
     }
   }
 
+  /// @notice Hook called before withdrawing assets from the vault
+  /// @dev Withdraws assets from yield pool before processing withdrawal
+  /// @param assets The amount of assets to withdraw
+  /// @param /* shares */ The amount of shares being burned (unused)
   function beforeWithdraw(
     uint256 assets,
     uint256 /* shares */
   ) internal override {
     // We need to withdraw the assets from the yield pool
-    _withdrawAssetsFromYieldPool(assets, address(this));
+    withdrawAssetsFromYieldPool(assets, address(this));
   }
 
+  /// @notice Hook called after depositing assets to the vault
+  /// @dev Deposits assets into yield pool after receiving them
+  /// @param assets The amount of assets deposited
+  /// @param /* shares */ The amount of shares minted (unused)
   function afterDeposit(
     uint256 assets,
     uint256 /* shares */
   ) internal override {
     // We need to deposit the assets into the yield pool
-    _depositAssetsInYieldPool(assets);
+    depositAssetsInYieldPool(assets);
   }
 
-  // @notice This function is used to handle failed (fast) messages manually
-  // It provides a mechanism for the pool curator to recover funds from a
-  // solver who have arrived thru the bridge but for which the hyperlane message was never processed.
-  // Given that this function is only callable by the owner, behind a timelock, it will likely only be called
-  // once the "slow" bridge has resolved, which means that it can claim funds.
-  // @param recipient The address of the recipient
-  // @param amount The amount of assets to transfer
+  /// @notice Processes failed Hyperlane messages manually
+  /// @dev Only callable by owner, typically after slow bridge resolution
+  /// @param chainId The origin chain ID
+  /// @param bridge The origin bridge address
+  /// @param data The encoded message data
   function processFailedHandler(
     uint32 chainId,
     address bridge,
@@ -613,7 +789,7 @@ contract RelayPool is ERC4626, Ownable {
     messages[chainId][bridge][message.nonce] = data;
 
     // Increase the outstanding debt with the amount
-    _increaseOutstandingDebt(message.amount, origin);
+    increaseOutstandingDebt(message.amount, origin);
     // And immediately claim from the bridge to get the funds (and decrease the outstanding debt!)
     uint256 amount = claim(chainId, bridge);
     if (amount < message.amount) {
@@ -621,10 +797,11 @@ contract RelayPool is ERC4626, Ownable {
     }
 
     // Send the funds to the recipient (we should not take fees because the funds have taken more time to arrive...)
-    _sendFunds(message.amount, message.recipient);
+    sendFunds(message.amount, message.recipient);
   }
 
-  // Needed to receive ETH from WETH for the `handle` function
+  /// @notice Receives native currency
+  /// @dev Required for WETH unwrapping in native currency pools
   receive() external payable {
     if (address(asset) != WETH) {
       revert NotAWethPool();

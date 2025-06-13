@@ -76,6 +76,7 @@
     "@safe-global/types-kit": "2.0.1",
     "@uniswap/v3-periphery": "1.4.4",
     "enquirer": "2.4.1",
+    "solidity-docgen": "0.6.0-beta.36",
     "solmate": "6.8.0"
   }
 }
